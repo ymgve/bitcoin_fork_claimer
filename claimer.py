@@ -340,10 +340,10 @@ class BitcoinFork(object):
         plaintx = version + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
         
         if not is_segwit:
-            return tx, doublesha(tx)
+            return plaintx, plaintx
         else:
-            tx = version + "\x00\x01" + plaintx[4:-4] + "\x02" + sigblock + locktime
-            return tx, doublesha(plaintx)
+            witnesstx = version + "\x00\x01" + plaintx[4:-4] + "\x02" + sigblock + locktime
+            return witnesstx, plaintx
         
 class BitcoinFaith(BitcoinFork):
     def __init__(self):
@@ -365,12 +365,12 @@ class BitcoinWorld(BitcoinFork):
         self.fullname = "Bitcoin World"
         self.magic = 0x777462f8
         self.port = 8357
-        self.seeds = ("47.52.250.221",)
+        self.seeds = ("47.52.250.221", "47.52.203.95", "47.91.237.5")
         self.signtype = 0x41
         self.signid = self.signtype | (87 << 8)
-        self.coinratio = 10000.0
         self.PUBKEY_ADDRESS = chr(73)
         self.SCRIPT_ADDRESS = chr(31)
+        self.coinratio = 10000.0
 
 class BitcoinGold(BitcoinFork):
     def __init__(self):
@@ -385,8 +385,22 @@ class BitcoinGold(BitcoinFork):
         self.PUBKEY_ADDRESS = chr(38)
         self.SCRIPT_ADDRESS = chr(23)
 
+class BitcoinX(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCX"
+        self.fullname = "BitcoinX"
+        self.magic = 0xf9bc0511
+        self.port = 9003
+        self.seeds = ("192.169.227.48", "120.92.119.221", "120.92.89.254", "120.131.5.173", "120.92.117.145", "192.169.153.174", "192.169.154.185", "166.227.117.163")
+        self.signtype = 0x11
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(75)
+        self.SCRIPT_ADDRESS = chr(63)
+        self.coinratio = 10000.0
+
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -402,6 +416,8 @@ if args.cointicker == "BTW":
     coin = BitcoinWorld()
 if args.cointicker == "BTG":
     coin = BitcoinGold()
+if args.cointicker == "BCX":
+    coin = BitcoinX()
     
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
@@ -432,7 +448,8 @@ else:
     raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
 
 if keytype in ("standard", "segwit"):
-    tx, txhash = coin.maketx_segwitsig(args.txid, txindex, sourceh160, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype == "segwit")
+    tx, plaintx = coin.maketx_segwitsig(args.txid, txindex, sourceh160, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype == "segwit")
+    txhash = doublesha(plaintx)
 else:
     raise Exception("Not implemented!")
     
@@ -502,7 +519,6 @@ while True:
             client.send("getdata", msg)
         
     elif cmd == "block":
-        if tx in payload:
             print "BLOCK WITH OUR TRANSACTION OBSERVED! YES!"
             
     elif cmd == "addr":
