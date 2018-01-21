@@ -239,6 +239,7 @@ def identify_keytype(wifkey, addr):
     raise Exception("Unable to identify key type!")
 
 def get_tx_details_from_blockchaininfo(txid, addr):
+    print "Querying blockchain.info API about data for transaction %s" % txid
     res = urllib2.urlopen("https://blockchain.info/rawtx/%s" % txid)
     txinfo = json.loads(res.read())
     found = None
@@ -297,7 +298,8 @@ class Client(object):
         
 class BitcoinFork(object):
     def __init__(self):
-        pass
+        self.coinratio = 1.0
+        self.versionno = 70015
         
     def maketx_standard_p2pkh(self, sourcetx, sourceidx, sourcescript, sourcesatoshis, sourceprivkey, pubkey, compressed, targetaddr, fee):
         targeth160 = b58decode(targetaddr)[1:]
@@ -324,6 +326,7 @@ class BitcoinFork(object):
         
 class BitcoinFaith(BitcoinFork):
     def __init__(self):
+        BitcoinFork.__init__(self)
         self.ticker = "BTF"
         self.fullname = "Bitcoin Faith"
         self.magic = 0xe6d4e2fa
@@ -331,49 +334,21 @@ class BitcoinFaith(BitcoinFork):
         self.seeds = ("a.btf.hjy.cc", "b.btf.hjy.cc", "c.btf.hjy.cc", "d.btf.hjy.cc", "e.btf.hjy.cc", "f.btf.hjy.cc")
         self.signtype = 0x41
         self.signid = self.signtype | (70 << 8)
-        
-def maketx(sourcetx, sourceidx, wifkey, targetaddr, numsatoshi, originalsatoshi):
-    sourceprivkeytype, sourceprivkey, compressed = wif2privkey(wifkey)
-    sourcepubkey = scalar_mul(sourceprivkey, Point(gx, gy), N)
-    sourceh160 = pubkey2h160(sourcepubkey, compressed)
-    targeth160 = b58decode(targetaddr)[1:]
 
-    s  = struct.pack("<I", 1)
-    s += chr(1)                             # one input
-    s += sourcetx.decode("hex")[::-1]       # source TX is in little endian order
-    s += struct.pack("<I", sourceidx)       # source ID too
-    s += "[[SCRIPT]]"                       # placeholder for script
-    s += "\xff\xff\xff\xff"                 # no locktime
-    s += chr(1)                             # one output
-    s += struct.pack("<Q", numsatoshi)      # hope you got this number correctly!
-    s += "\x19\x76\xa9\x14" + targeth160 + "\x88\xac" # standard P2PKH script
-    s += "\x00\x00\x00\x00"                 # no locktime
-    
-    to_sign = ""
-    to_sign += struct.pack("<I", 1)
-    to_sign += hashlib.sha256(hashlib.sha256(sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)).digest()).digest()
-    to_sign += hashlib.sha256(hashlib.sha256("\xff\xff\xff\xff" ).digest()).digest()
-    to_sign += sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
-    to_sign += "\x19\x76\xa9\x14" + sourceh160 + "\x88\xac"
-    to_sign += struct.pack("<Q", originalsatoshi)
-    to_sign += "\xff\xff\xff\xff"
-    to_sign += hashlib.sha256(hashlib.sha256(struct.pack("<Q", numsatoshi) + "\x19\x76\xa9\x14" + targeth160 + "\x88\xac").digest()).digest()
-    to_sign += "\x00\x00\x00\x00"
-    to_sign += struct.pack("<I", 0x41 | (70 << 8))
-    print to_sign.encode("hex")
-    print hashlib.sha256(to_sign).hexdigest()
-    
-    signature = signdata(sourceprivkey, to_sign) + "\x41"
-    serpubkey = serializepubkey(sourcepubkey, compressed)
-
-    script = chr(len(signature)) + signature + chr(len(serpubkey)) + serpubkey
-    script = chr(len(script)) + script
-
-    tx = s.replace("[[SCRIPT]]", script)
-    print tx.encode("hex")
-    return tx, pubkey2addr(sourcepubkey, compressed)
+class BitcoinWorld(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTW"
+        self.fullname = "Bitcoin World"
+        self.magic = 0x777462f8
+        self.port = 8357
+        self.seeds = ("47.52.250.221",)
+        self.signtype = 0x41
+        self.signid = self.signtype | (87 << 8)
+        self.coinratio = 10000.0
 
 parser = argparse.ArgumentParser()
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -383,7 +358,13 @@ parser.add_argument("--txindex", help="Manually specified txindex, skips blockch
 parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
 args = parser.parse_args()
 
+if args.cointicker == "BTF":
+    coin = BitcoinFaith()
+if args.cointicker == "BTW":
+    coin = BitcoinWorld()
+    
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
+
 if keytype == "standard":
     script = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
 else:
@@ -395,17 +376,21 @@ else:
     txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr)
     assert bciscript == script
 
-coin = BitcoinFaith()
 tx = coin.maketx_standard_p2pkh(args.txid, txindex, script, satoshis, privkey, pubkey, compressed, args.destaddr, args.fee)
 print "Raw transaction"
 print tx.encode("hex")
 print
-print "YOU ARE ABOUT TO SEND %.8f BTF FROM %s TO %s!" % ((satoshis - args.fee) / 100000000.0, args.srcaddr, args.destaddr)
+
+coinamount = (satoshis - args.fee) * coin.coinratio / 100000000.0
+btcamount = (satoshis - args.fee) / 100000000.0
+consentstring = "I am sending coins on the %s network and I accept the risks" % coin.fullname
+print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s TO %s!" % (coinamount, coin.ticker, btcamount, args.srcaddr, args.destaddr)
 print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!"
-print "Write 'I understand' to continue"
+print "Write '%s' to continue" % consentstring
 
 answer = raw_input()
-assert answer == "I understand"
+if answer != consentstring:
+    raise Exception("User did not write '%s', aborting" % consentstring)
 
 txhash = hashlib.sha256(hashlib.sha256(tx).digest()).digest()
 print "generated transaction", txhash[::-1].encode("hex")
@@ -413,12 +398,11 @@ print "generated transaction", txhash[::-1].encode("hex")
 client = Client(coin)
 client.connect()
 
-versionno = 70015
 services = 0
 localaddr = "\x00" * 8 + "00000000000000000000FFFF".decode("hex") + "\x00" * 6
 nonce = os.urandom(8)
 user_agent = "Scraper"
-msg = struct.pack("<IQQ", versionno, services, int(time.time())) + localaddr + localaddr + nonce + lengthprefixed(user_agent) + struct.pack("<IB", 0, 0)
+msg = struct.pack("<IQQ", coin.versionno, services, int(time.time())) + localaddr + localaddr + nonce + lengthprefixed(user_agent) + struct.pack("<IB", 0, 0)
 client.send("version", msg)
 
 while True:
@@ -461,7 +445,7 @@ while True:
                 
         if len(blocks_to_get) > 0:
             inv = ["\x02\x00\x00\x00" + invhash for invhash in blocks_to_get]
-            msg = lengthprefixed("".join(inv))
+            msg = make_varint(len(inv)) + "".join(inv)
             client.send("getdata", msg)
         
     elif cmd == "block":
