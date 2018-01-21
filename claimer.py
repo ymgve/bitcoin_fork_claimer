@@ -234,7 +234,7 @@ def identify_keytype(wifkey, addr):
         return "standard", privkey, pubkey, addrh160, 1
         
     if addrh160 == pubkey2segwith160(pubkey):
-        return "segwit", privkey, pubkey, addrh160, 1
+        return "segwit", privkey, pubkey, pubkey2h160(pubkey, 1), 1
         
     raise Exception("Unable to identify key type!")
 
@@ -316,26 +316,34 @@ class BitcoinFork(object):
         self.coinratio = 1.0
         self.versionno = 70015
         
-    def maketx_standard(self, sourcetx, sourceidx, sourcescript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee):
+    def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit=False):
         version = struct.pack("<I", 1)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
-        inscript = lengthprefixed(sourcescript)
+        inscript = lengthprefixed("\x76\xa9\x14" + sourceh160 + "\x88\xac")
         satoshis = struct.pack("<Q", sourcesatoshis)
+        txout = struct.pack("<Q", sourcesatoshis - fee) + lengthprefixed(outscript)
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
-        txout = struct.pack("<Q", sourcesatoshis - fee) + lengthprefixed(outscript)
         
         to_sign = version + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txout) + locktime + sigtype
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
+        sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
 
-        script = lengthprefixed(signature) + lengthprefixed(serpubkey)
-        script = lengthprefixed(script)
+        if not is_segwit:
+            script = lengthprefixed(sigblock)
+        else:
+            script = "\x17\x16\x00\x14" + sourceh160
+            
+        plaintx = version + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
         
-        tx = version + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
-        return tx
+        if not is_segwit:
+            return tx, doublesha(tx)
+        else:
+            tx = version + "\x00\x01" + plaintx[4:-4] + "\x02" + sigblock + locktime
+            return tx, doublesha(plaintx)
         
 class BitcoinFaith(BitcoinFork):
     def __init__(self):
@@ -397,16 +405,20 @@ if args.cointicker == "BTG":
     
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
-if keytype == "standard":
-    script = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
-else:
-    raise Exception("Not impl!")
-    
-if args.txindex and args.satoshis:
+if args.txindex is not None and args.satoshis is not None:
     txindex, satoshis = args.txindex, args.satoshis
 else:
     txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr)
-    assert bciscript == script
+    
+    if keytype == "standard":
+        script = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
+    elif keytype == "segwit":
+        script = "\xa9\x14" + hash160("\x00\x14" + sourceh160) + "\x87"
+    else:
+        raise Exception("Not implemented!")
+    
+    if bciscript != script:
+        raise Exception("Script type in source output that is not supported!")
 
 addr = b58decode(args.destaddr)
 assert len(addr) == 21
@@ -419,7 +431,11 @@ elif addr[0] == "\x05" or addr[0] == coin.SCRIPT_ADDRESS:
 else:
     raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
 
-tx = coin.maketx_standard(args.txid, txindex, script, satoshis, privkey, pubkey, compressed, outscript, args.fee)
+if keytype in ("standard", "segwit"):
+    tx, txhash = coin.maketx_segwitsig(args.txid, txindex, sourceh160, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype == "segwit")
+else:
+    raise Exception("Not implemented!")
+    
 print "Raw transaction"
 print tx.encode("hex")
 print
@@ -430,7 +446,6 @@ print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s TO %s!" % 
 print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!"
 get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
 
-txhash = hashlib.sha256(hashlib.sha256(tx).digest()).digest()
 print "generated transaction", txhash[::-1].encode("hex")
 
 client = Client(coin)
