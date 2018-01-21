@@ -315,6 +315,7 @@ class BitcoinFork(object):
     def __init__(self):
         self.coinratio = 1.0
         self.versionno = 70015
+        self.maketx = self.maketx_segwitsig
         
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit=False):
         version = struct.pack("<I", 1)
@@ -344,6 +345,27 @@ class BitcoinFork(object):
         else:
             witnesstx = version + "\x00\x01" + plaintx[4:-4] + "\x02" + sigblock + locktime
             return witnesstx, plaintx
+        
+    def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit=False):
+        if is_segwit:
+            return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit)
+            
+        version = struct.pack("<I", 1)
+        prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
+        sequence = struct.pack("<i", -1)
+        inscript = lengthprefixed("\x76\xa9\x14" + sourceh160 + "\x88\xac")
+        txout = struct.pack("<Q", sourcesatoshis - fee) + lengthprefixed(outscript)
+        locktime = struct.pack("<I", 0)
+        sigtype = struct.pack("<I", self.signid)
+        
+        to_sign = version + make_varint(1) + prevout + inscript + sequence + make_varint(1) + txout + locktime + sigtype
+        
+        signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
+        serpubkey = serializepubkey(pubkey, compressed)
+        sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
+        
+        plaintx = version + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(1) + txout + locktime
+        return plaintx, plaintx
         
 class BitcoinFaith(BitcoinFork):
     def __init__(self):
@@ -399,8 +421,23 @@ class BitcoinX(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(63)
         self.coinratio = 10000.0
 
+class Bitcoin2X(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "B2X"
+        self.fullname = "Bitcoin 2X Segwit"
+        self.magic = 0xd8b5b2f4
+        self.port = 8333
+        self.seeds = ("node1.b2x-segwit.io", "node2.b2x-segwit.io", "node3.b2x-segwit.io", "136.243.147.159", "136.243.171.156", "46.229.165.141", "178.32.3.12")
+        self.signtype = 0x21
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
+        self.versionno = 70015 | (1 << 27)
+        
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -418,6 +455,8 @@ if args.cointicker == "BTG":
     coin = BitcoinGold()
 if args.cointicker == "BCX":
     coin = BitcoinX()
+if args.cointicker == "B2X":
+    coin = Bitcoin2X()
     
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
@@ -448,7 +487,7 @@ else:
     raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
 
 if keytype in ("standard", "segwit"):
-    tx, plaintx = coin.maketx_segwitsig(args.txid, txindex, sourceh160, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype == "segwit")
+    tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype == "segwit")
     txhash = doublesha(plaintx)
 else:
     raise Exception("Not implemented!")
@@ -481,10 +520,15 @@ while True:
     if cmd == "version":
         client.send("verack", "")
         
+    elif cmd == "sendheaders":
+        msg = make_varint(0)
+        client.send("headers", msg)
+        
     elif cmd == "ping":
         client.send("pong", payload)
         client.send("inv", "\x01" + struct.pack("<I", 1) + txhash)
         client.send("mempool", "")
+        #client.send("getaddr", "")
         
     elif cmd == "getdata":
         if payload == "\x01\x01\x00\x00\x00" + txhash:
@@ -519,6 +563,7 @@ while True:
             client.send("getdata", msg)
         
     elif cmd == "block":
+        if tx in payload or plaintx in payload:
             print "BLOCK WITH OUR TRANSACTION OBSERVED! YES!"
             
     elif cmd == "addr":
