@@ -1,4 +1,4 @@
-import hashlib, os, struct, sys, socket, time, urllib2, json, argparse, cStringIO
+import hashlib, os, struct, sys, socket, time, urllib2, json, argparse, cStringIO, traceback
 
 N = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fL
 R = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141L
@@ -259,12 +259,19 @@ def get_tx_details_from_blockchaininfo(txid, addr):
         
     return found
     
+def get_consent(consentstring):
+    print "Write '%s' to continue" % consentstring
+
+    answer = raw_input()
+    if answer != consentstring:
+        raise Exception("User did not write '%s', aborting" % consentstring)
+
 def recv_all(s, length):
     ret = ""
     while len(ret) < length:
         temp = s.recv(length - len(ret))
         if len(temp) == 0:
-            raise "Connection reset!"
+            raise Exception("Connection reset!")
         ret += temp
         
     return ret
@@ -274,9 +281,17 @@ class Client(object):
         self.coin = coin
         
     def connect(self):
-        address = (coin.seeds[ord(os.urandom(1)) % len(coin.seeds)], coin.port)
-        self.sc = socket.create_connection(address)
-        print "connected to", address
+        index = ord(os.urandom(1)) % len(coin.seeds)
+        while True:
+            try:
+                address = (coin.seeds[index], coin.port)
+                print "trying to connect to", address
+                self.sc = socket.create_connection(address)
+                print "connected to", address
+                break
+            except:
+                traceback.print_exc()
+                index = (index + 1) % len(coin.seeds)
         
     def send(self, cmd, msg):
         magic = struct.pack("<L", coin.magic)
@@ -301,9 +316,7 @@ class BitcoinFork(object):
         self.coinratio = 1.0
         self.versionno = 70015
         
-    def maketx_standard_p2pkh(self, sourcetx, sourceidx, sourcescript, sourcesatoshis, sourceprivkey, pubkey, compressed, targetaddr, fee):
-        targeth160 = b58decode(targetaddr)[1:]
-        
+    def maketx_standard(self, sourcetx, sourceidx, sourcescript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee):
         version = struct.pack("<I", 1)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
@@ -311,9 +324,9 @@ class BitcoinFork(object):
         satoshis = struct.pack("<Q", sourcesatoshis)
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
-        outscript = struct.pack("<Q", sourcesatoshis - fee) + lengthprefixed("\x76\xa9\x14" + targeth160 + "\x88\xac")
+        txout = struct.pack("<Q", sourcesatoshis - fee) + lengthprefixed(outscript)
         
-        to_sign = version + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(outscript) + locktime + sigtype
+        to_sign = version + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txout) + locktime + sigtype
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -321,7 +334,7 @@ class BitcoinFork(object):
         script = lengthprefixed(signature) + lengthprefixed(serpubkey)
         script = lengthprefixed(script)
         
-        tx = version + make_varint(1) + prevout + script + sequence + make_varint(1) + outscript + locktime
+        tx = version + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
         return tx
         
 class BitcoinFaith(BitcoinFork):
@@ -334,6 +347,8 @@ class BitcoinFaith(BitcoinFork):
         self.seeds = ("a.btf.hjy.cc", "b.btf.hjy.cc", "c.btf.hjy.cc", "d.btf.hjy.cc", "e.btf.hjy.cc", "f.btf.hjy.cc")
         self.signtype = 0x41
         self.signid = self.signtype | (70 << 8)
+        self.PUBKEY_ADDRESS = chr(36)
+        self.SCRIPT_ADDRESS = chr(40)
 
 class BitcoinWorld(BitcoinFork):
     def __init__(self):
@@ -346,9 +361,24 @@ class BitcoinWorld(BitcoinFork):
         self.signtype = 0x41
         self.signid = self.signtype | (87 << 8)
         self.coinratio = 10000.0
+        self.PUBKEY_ADDRESS = chr(73)
+        self.SCRIPT_ADDRESS = chr(31)
+
+class BitcoinGold(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTG"
+        self.fullname = "Bitcoin Gold"
+        self.magic = 0x446d47e1
+        self.port = 8338
+        self.seeds = ("pool-us.bloxstor.com", "btgminingusa.com", "btg1.stage.bitsane.com", "eu-dnsseed.bitcoingold-official.org", "dnsseed.bitcoingold.org", "dnsseed.btcgpu.org")
+        self.signtype = 0x41
+        self.signid = self.signtype | (79 << 8)
+        self.PUBKEY_ADDRESS = chr(38)
+        self.SCRIPT_ADDRESS = chr(23)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -362,6 +392,8 @@ if args.cointicker == "BTF":
     coin = BitcoinFaith()
 if args.cointicker == "BTW":
     coin = BitcoinWorld()
+if args.cointicker == "BTG":
+    coin = BitcoinGold()
     
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
@@ -376,21 +408,27 @@ else:
     txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr)
     assert bciscript == script
 
-tx = coin.maketx_standard_p2pkh(args.txid, txindex, script, satoshis, privkey, pubkey, compressed, args.destaddr, args.fee)
+addr = b58decode(args.destaddr)
+assert len(addr) == 21
+if addr[0] == "\x00" or addr[0] == coin.PUBKEY_ADDRESS:
+    outscript = "\x76\xa9\x14" + addr[1:] + "\x88\xac"
+elif addr[0] == "\x05" or addr[0] == coin.SCRIPT_ADDRESS:
+    print "YOU ARE TRYING TO SEND TO A P2SH ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
+    get_consent("I am aware that the destination address is P2SH")
+    outscript = "\xa9\x14" + addr[1:] + "\x87"
+else:
+    raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
+
+tx = coin.maketx_standard(args.txid, txindex, script, satoshis, privkey, pubkey, compressed, outscript, args.fee)
 print "Raw transaction"
 print tx.encode("hex")
 print
 
 coinamount = (satoshis - args.fee) * coin.coinratio / 100000000.0
 btcamount = (satoshis - args.fee) / 100000000.0
-consentstring = "I am sending coins on the %s network and I accept the risks" % coin.fullname
 print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s TO %s!" % (coinamount, coin.ticker, btcamount, args.srcaddr, args.destaddr)
 print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!"
-print "Write '%s' to continue" % consentstring
-
-answer = raw_input()
-if answer != consentstring:
-    raise Exception("User did not write '%s', aborting" % consentstring)
+get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
 
 txhash = hashlib.sha256(hashlib.sha256(tx).digest()).digest()
 print "generated transaction", txhash[::-1].encode("hex")
@@ -418,7 +456,7 @@ while True:
         
     elif cmd == "getdata":
         if payload == "\x01\x01\x00\x00\x00" + txhash:
-            print "sending txhash, if there is no error response everything probably went well"
+            print "sending txhash"
             client.send("tx", tx)
          
     elif cmd == "feefilter":
@@ -452,5 +490,15 @@ while True:
         if tx in payload:
             print "BLOCK WITH OUR TRANSACTION OBSERVED! YES!"
             
+    elif cmd == "addr":
+        st = cStringIO.StringIO(payload)
+        naddr = read_varint(st)
+        for i in xrange(naddr):
+            data = st.read(30)
+            if data[12:24] == "\x00" * 10 + "\xff\xff":
+                print "got peer ipv4 address %d.%d.%d.%d port %d" % struct.unpack(">BBBBH", data[24:30])
+            else:
+                print "got peer ipv6 address %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x port %d" % struct.unpack(">HHHHHHHHH", data[12:30])
+        
     else:
         print repr(cmd), repr(payload)
