@@ -316,6 +316,7 @@ class BitcoinFork(object):
         self.coinratio = 1.0
         self.versionno = 70015
         self.maketx = self.maketx_segwitsig
+        self.extrabytes = ""
         
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit=False):
         version = struct.pack("<I", 1)
@@ -327,7 +328,7 @@ class BitcoinFork(object):
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
         
-        to_sign = version + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txout) + locktime + sigtype
+        to_sign = version + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txout) + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -358,7 +359,7 @@ class BitcoinFork(object):
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
         
-        to_sign = version + make_varint(1) + prevout + inscript + sequence + make_varint(1) + txout + locktime + sigtype
+        to_sign = version + make_varint(1) + prevout + inscript + sequence + make_varint(1) + txout + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -435,9 +436,25 @@ class Bitcoin2X(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         self.versionno = 70015 | (1 << 27)
+
+class UnitedBitcoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "UBTC"
+        self.fullname = "United Bitcoin"
+        self.magic = 0xd9b4bef9
+        self.port = 8333
+        self.seeds = ("urlelcm1.ub.com", "urlelcm2.ub.com", "urlelcm3.ub.com", "urlelcm4.ub.com", "urlelcm5.ub.com", "urlelcm6.ub.com", "urlelcm7.ub.com", "urlelcm8.ub.com", "urlelcm9.ub.com", "urlelcm10.ub.com")
+        self.signtype = 0x09
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
+        self.versionno = 731800
+        self.extrabytes = "\x02ub"
         
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -457,6 +474,8 @@ if args.cointicker == "BCX":
     coin = BitcoinX()
 if args.cointicker == "B2X":
     coin = Bitcoin2X()
+if args.cointicker == "UBTC":
+    coin = UnitedBitcoin()
     
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
