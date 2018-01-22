@@ -502,8 +502,22 @@ class BitcoinDiamond(BitcoinFork):
         self.BCDgarbage = "\xff" * 32
         self.coinratio = 10.0
         
+class BitcoinPizza(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BPA"
+        self.fullname = "Bitcoin Pizza"
+        self.hardforkheight = 501888
+        self.magic = 0xd9c4bea9
+        self.port = 8888
+        self.seeds = ("dnsseed.bitcoinpizza.cc", "seed1.bitcoinpizza.cc", "seed2.bitcoinpizza.cc", "seed3.bitcoinpizza.cc", "seed4.bitcoinpizza.cc")
+        self.signtype = 0x21
+        self.signid = self.signtype | (47 << 8)
+        self.PUBKEY_ADDRESS = chr(55)
+        self.SCRIPT_ADDRESS = chr(80)
+        
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -529,6 +543,8 @@ if args.cointicker == "SBTC":
     coin = SuperBitcoin()
 if args.cointicker == "BCD":
     coin = BitcoinDiamond()
+if args.cointicker == "BPA":
+    coin = BitcoinPizza()
     
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
