@@ -317,9 +317,11 @@ class BitcoinFork(object):
         self.versionno = 70015
         self.maketx = self.maketx_segwitsig
         self.extrabytes = ""
+        self.BCDgarbage = ""
+        self.txversion = 1
         
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit=False):
-        version = struct.pack("<I", 1)
+        version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
         inscript = lengthprefixed("\x76\xa9\x14" + sourceh160 + "\x88\xac")
@@ -328,7 +330,7 @@ class BitcoinFork(object):
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
         
-        to_sign = version + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txout) + locktime + sigtype + self.extrabytes
+        to_sign = version + self.BCDgarbage + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txout) + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -339,19 +341,19 @@ class BitcoinFork(object):
         else:
             script = "\x17\x16\x00\x14" + sourceh160
             
-        plaintx = version + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
+        plaintx = version + self.BCDgarbage + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
         
         if not is_segwit:
             return plaintx, plaintx
         else:
-            witnesstx = version + "\x00\x01" + plaintx[4:-4] + "\x02" + sigblock + locktime
+            witnesstx = version + self.BCDgarbage + "\x00\x01" + plaintx[4+len(self.BCDgarbage):-4] + "\x02" + sigblock + locktime
             return witnesstx, plaintx
         
     def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit=False):
         if is_segwit:
             return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit)
             
-        version = struct.pack("<I", 1)
+        version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
         inscript = lengthprefixed("\x76\xa9\x14" + sourceh160 + "\x88\xac")
@@ -359,13 +361,13 @@ class BitcoinFork(object):
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
         
-        to_sign = version + make_varint(1) + prevout + inscript + sequence + make_varint(1) + txout + locktime + sigtype + self.extrabytes
+        to_sign = version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(1) + txout + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
         sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
         
-        plaintx = version + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(1) + txout + locktime
+        plaintx = version + self.BCDgarbage + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(1) + txout + locktime
         return plaintx, plaintx
         
 class BitcoinFaith(BitcoinFork):
@@ -452,9 +454,41 @@ class UnitedBitcoin(BitcoinFork):
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         self.versionno = 731800
         self.extrabytes = "\x02ub"
+
+class SuperBitcoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "SBTC"
+        self.fullname = "Super Bitcoin"
+        self.magic = 0xd9b4bef9
+        self.port = 8334
+        self.seeds = ("seed.superbtca.com", "seed.superbtca.info", "seed.superbtc.org")
+        self.signtype = 0x41
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
+        self.extrabytes = lengthprefixed("sbtc")
+        
+class BitcoinDiamond(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCD"
+        self.fullname = "Bitcoin Diamond"
+        self.magic = 0xd9b4debd
+        self.port = 7117
+        self.seeds = ("seed1.dns.btcd.io", "seed2.dns.btcd.io", "seed3.dns.btcd.io", "seed4.dns.btcd.io", "seed5.dns.btcd.io", "seed6.dns.btcd.io")
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
+        self.txversion = 12
+        self.BCDgarbage = "\xff" * 32
+        self.coinratio = 10.0
         
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -476,6 +510,10 @@ if args.cointicker == "B2X":
     coin = Bitcoin2X()
 if args.cointicker == "UBTC":
     coin = UnitedBitcoin()
+if args.cointicker == "SBTC":
+    coin = SuperBitcoin()
+if args.cointicker == "BCD":
+    coin = BitcoinDiamond()
     
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
