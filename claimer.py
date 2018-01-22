@@ -238,10 +238,17 @@ def identify_keytype(wifkey, addr):
         
     raise Exception("Unable to identify key type!")
 
-def get_tx_details_from_blockchaininfo(txid, addr):
+def get_tx_details_from_blockchaininfo(txid, addr, hardforkheight):
     print "Querying blockchain.info API about data for transaction %s" % txid
     res = urllib2.urlopen("https://blockchain.info/rawtx/%s" % txid)
     txinfo = json.loads(res.read())
+    if hardforkheight < txinfo["block_height"]:
+        print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN!"
+        print "(fork at height %d, this tx at %d)" % (hardforkheight, txinfo["block_height"])
+        print "You will most likely be unable to claim these coins."
+        print "Please look for an earlier transaction before the fork point.\n\n"
+        get_consent("I will try anyway")
+        
     found = None
     for outinfo in txinfo["out"]:
         if outinfo["addr"] == addr:
@@ -375,6 +382,7 @@ class BitcoinFaith(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "BTF"
         self.fullname = "Bitcoin Faith"
+        self.hardforkheight = 500000
         self.magic = 0xe6d4e2fa
         self.port = 8346
         self.seeds = ("a.btf.hjy.cc", "b.btf.hjy.cc", "c.btf.hjy.cc", "d.btf.hjy.cc", "e.btf.hjy.cc", "f.btf.hjy.cc")
@@ -388,6 +396,7 @@ class BitcoinWorld(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "BTW"
         self.fullname = "Bitcoin World"
+        self.hardforkheight = 499777
         self.magic = 0x777462f8
         self.port = 8357
         self.seeds = ("47.52.250.221", "47.52.203.95", "47.91.237.5")
@@ -402,6 +411,7 @@ class BitcoinGold(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "BTG"
         self.fullname = "Bitcoin Gold"
+        self.hardforkheight = 491407
         self.magic = 0x446d47e1
         self.port = 8338
         self.seeds = ("pool-us.bloxstor.com", "btgminingusa.com", "btg1.stage.bitsane.com", "eu-dnsseed.bitcoingold-official.org", "dnsseed.bitcoingold.org", "dnsseed.btcgpu.org")
@@ -415,6 +425,7 @@ class BitcoinX(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "BCX"
         self.fullname = "BitcoinX"
+        self.hardforkheight = 498888
         self.magic = 0xf9bc0511
         self.port = 9003
         self.seeds = ("192.169.227.48", "120.92.119.221", "120.92.89.254", "120.131.5.173", "120.92.117.145", "192.169.153.174", "192.169.154.185", "166.227.117.163")
@@ -429,6 +440,7 @@ class Bitcoin2X(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "B2X"
         self.fullname = "Bitcoin 2X Segwit"
+        self.hardforkheight = 501451
         self.magic = 0xd8b5b2f4
         self.port = 8333
         self.seeds = ("node1.b2x-segwit.io", "node2.b2x-segwit.io", "node3.b2x-segwit.io", "136.243.147.159", "136.243.171.156", "46.229.165.141", "178.32.3.12")
@@ -444,6 +456,7 @@ class UnitedBitcoin(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "UBTC"
         self.fullname = "United Bitcoin"
+        self.hardforkheight = 498777
         self.magic = 0xd9b4bef9
         self.port = 8333
         self.seeds = ("urlelcm1.ub.com", "urlelcm2.ub.com", "urlelcm3.ub.com", "urlelcm4.ub.com", "urlelcm5.ub.com", "urlelcm6.ub.com", "urlelcm7.ub.com", "urlelcm8.ub.com", "urlelcm9.ub.com", "urlelcm10.ub.com")
@@ -460,6 +473,7 @@ class SuperBitcoin(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "SBTC"
         self.fullname = "Super Bitcoin"
+        self.hardforkheight = 498888
         self.magic = 0xd9b4bef9
         self.port = 8334
         self.seeds = ("seed.superbtca.com", "seed.superbtca.info", "seed.superbtc.org")
@@ -475,6 +489,7 @@ class BitcoinDiamond(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "BCD"
         self.fullname = "Bitcoin Diamond"
+        self.hardforkheight = 495866
         self.magic = 0xd9b4debd
         self.port = 7117
         self.seeds = ("seed1.dns.btcd.io", "seed2.dns.btcd.io", "seed3.dns.btcd.io", "seed4.dns.btcd.io", "seed5.dns.btcd.io", "seed6.dns.btcd.io")
@@ -520,7 +535,7 @@ keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey,
 if args.txindex is not None and args.satoshis is not None:
     txindex, satoshis = args.txindex, args.satoshis
 else:
-    txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr)
+    txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
     if keytype == "standard":
         script = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
@@ -560,6 +575,7 @@ print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!
 get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
 
 print "generated transaction", txhash[::-1].encode("hex")
+print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
 
 client = Client(coin)
 client.connect()
