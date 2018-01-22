@@ -399,7 +399,7 @@ class BitcoinWorld(BitcoinFork):
         self.hardforkheight = 499777
         self.magic = 0x777462f8
         self.port = 8357
-        self.seeds = ("47.52.250.221", "47.52.203.95", "47.91.237.5")
+        self.seeds = ("47.52.250.221", "47.91.237.5")
         self.signtype = 0x41
         self.signid = self.signtype | (87 << 8)
         self.PUBKEY_ADDRESS = chr(73)
@@ -588,6 +588,16 @@ coinamount = (satoshis - args.fee) * coin.coinratio / 100000000.0
 btcamount = (satoshis - args.fee) / 100000000.0
 print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s TO %s!" % (coinamount, coin.ticker, btcamount, args.srcaddr, args.destaddr)
 print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!"
+
+# avoid bad RAM errors in destination address
+idx = tx.index(addr[1:11])
+part2 = tx[idx+10:idx+20]
+idx = tx.index(addr[11:21])
+part1 = tx[idx-10:idx]
+testaddr = b58encode(addr[0] + part1 + part2)
+if args.destaddr != testaddr or outscript not in tx:
+    raise Exception("Corrupted destination address! Check your RAM!")
+
 get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
 
 print "generated transaction", txhash[::-1].encode("hex")
