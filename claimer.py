@@ -8,7 +8,53 @@ gx = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798L
 gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8L
 
 b58ab = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+bech32ab = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
+def bech32_polymod(values):
+    GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
+    chk = 1
+    for v in values:
+        b = (chk >> 25)
+        chk = (chk & 0x1ffffff) << 5 ^ v
+        for i in range(5):
+            chk ^= GEN[i] if ((b >> i) & 1) else 0
+    return chk
+
+def bech32_hrp_expand(s):
+    return [ord(x) >> 5 for x in s] + [0] + [ord(x) & 31 for x in s]
+
+def bech32decode(addr):
+    hrp, data = addr.lower().rsplit("1", 1)
+    data = [bech32ab.index(c) for c in data]
+
+    assert bech32_polymod(bech32_hrp_expand(hrp) + data) == 1, "bech32 checksum failed"
+    assert data[0] == 0, "only support version 0 witness for now"
+    data = data[1:-6]
+    
+    n = 0
+    for c in data:
+        n = n << 5 | c
+
+    nbytes, extrabits = divmod(len(data) * 5, 8)
+    return long2byte(n >> extrabits, nbytes)
+  
+def bech32encode(hrp, s):
+    extrabits = (5 - ((len(s) * 8) % 5)) % 5
+    nchars = (len(s) * 8 + extrabits) / 5
+    n = byte2long(s) << extrabits
+    
+    data = []
+    for i in xrange(nchars):
+        data.insert(0, n & 31)
+        n >>= 5
+        
+    data.insert(0, 0) # version 0
+    
+    values = bech32_hrp_expand(hrp) + data
+    polymod = bech32_polymod(values + [0,0,0,0,0,0]) ^ 1
+    data += [(polymod >> 5 * (5 - i)) & 31 for i in range(6)]
+    return hrp + "1" + "".join(bech32ab[c] for c in data)
+  
 def b58csum(s):
     return hashlib.sha256(hashlib.sha256(s).digest()).digest()[0:4]
     
@@ -222,21 +268,32 @@ def wif2privkey(s):
     return keytype, byte2long(s[1:33]), compressed
     
 def identify_keytype(wifkey, addr):
-    addrh160 = b58decode(addr)[1:]
-    assert len(addrh160) == 20
+    if addr.startswith("bc1"):
+        addrh160 = bech32decode(addr)
+        assert len(addrh160) == 20
+        
+        privkeytype, privkey, compressed = wif2privkey(args.wifkey)
+        pubkey = scalar_mul(privkey, Point(gx, gy), N)
+        if addrh160 == pubkey2h160(pubkey, 1):
+            return "segwitbech32", privkey, pubkey, addrh160, 1
+        
+        raise Exception("Unable to identify key type!")
+    else:
+        addrh160 = b58decode(addr)[1:]
+        assert len(addrh160) == 20
 
-    privkeytype, privkey, compressed = wif2privkey(args.wifkey)
-    pubkey = scalar_mul(privkey, Point(gx, gy), N)
-    if addrh160 == pubkey2h160(pubkey, 0):
-        return "standard", privkey, pubkey, addrh160, 0
-        
-    if addrh160 == pubkey2h160(pubkey, 1):
-        return "standard", privkey, pubkey, addrh160, 1
-        
-    if addrh160 == pubkey2segwith160(pubkey):
-        return "segwit", privkey, pubkey, pubkey2h160(pubkey, 1), 1
-        
-    raise Exception("Unable to identify key type!")
+        privkeytype, privkey, compressed = wif2privkey(args.wifkey)
+        pubkey = scalar_mul(privkey, Point(gx, gy), N)
+        if addrh160 == pubkey2h160(pubkey, 0):
+            return "standard", privkey, pubkey, addrh160, 0
+            
+        if addrh160 == pubkey2h160(pubkey, 1):
+            return "standard", privkey, pubkey, addrh160, 1
+            
+        if addrh160 == pubkey2segwith160(pubkey):
+            return "segwit", privkey, pubkey, pubkey2h160(pubkey, 1), 1
+            
+        raise Exception("Unable to identify key type!")
 
 def get_tx_details_from_blockchaininfo(txid, addr, hardforkheight):
     print "Querying blockchain.info API about data for transaction %s" % txid
@@ -327,7 +384,7 @@ class BitcoinFork(object):
         self.BCDgarbage = ""
         self.txversion = 1
         
-    def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit=False):
+    def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
         version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
@@ -343,22 +400,26 @@ class BitcoinFork(object):
         serpubkey = serializepubkey(pubkey, compressed)
         sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
 
-        if not is_segwit:
+        if keytype == "standard":
             script = lengthprefixed(sigblock)
-        else:
+        elif keytype == "segwit":
             script = "\x17\x16\x00\x14" + sourceh160
+        elif keytype == "segwitbech32":
+            script = "\x00"
+        else:
+            raise Exception("Not implemented!")
             
         plaintx = version + self.BCDgarbage + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
         
-        if not is_segwit:
+        if keytype == "standard":
             return plaintx, plaintx
         else:
             witnesstx = version + self.BCDgarbage + "\x00\x01" + plaintx[4+len(self.BCDgarbage):-4] + "\x02" + sigblock + locktime
             return witnesstx, plaintx
         
-    def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit=False):
-        if is_segwit:
-            return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, is_segwit)
+    def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
+        if keytype != "standard":
+            return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype)
             
         version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
@@ -557,25 +618,34 @@ else:
         script = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
     elif keytype == "segwit":
         script = "\xa9\x14" + hash160("\x00\x14" + sourceh160) + "\x87"
+    elif keytype == "segwitbech32":
+        script = "\x00\x14" + sourceh160
     else:
         raise Exception("Not implemented!")
     
     if bciscript != script:
         raise Exception("Script type in source output that is not supported!")
 
-addr = b58decode(args.destaddr)
-assert len(addr) == 21
-if addr[0] == "\x00" or addr[0] == coin.PUBKEY_ADDRESS:
-    outscript = "\x76\xa9\x14" + addr[1:] + "\x88\xac"
-elif addr[0] == "\x05" or addr[0] == coin.SCRIPT_ADDRESS:
-    print "YOU ARE TRYING TO SEND TO A P2SH ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
-    get_consent("I am aware that the destination address is P2SH")
-    outscript = "\xa9\x14" + addr[1:] + "\x87"
+if args.destaddr.startswith("bc1"):
+    addr = bech32decode(args.destaddr)
+    assert len(addr) == 20
+    print "YOU ARE TRYING TO SEND TO A bech32 ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
+    get_consent("I am aware that the destination address is bech32")
+    outscript = "\x00\x14" + addr
 else:
-    raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
+    addr = b58decode(args.destaddr)
+    assert len(addr) == 21
+    if addr[0] == "\x00" or addr[0] == coin.PUBKEY_ADDRESS:
+        outscript = "\x76\xa9\x14" + addr[1:] + "\x88\xac"
+    elif addr[0] == "\x05" or addr[0] == coin.SCRIPT_ADDRESS:
+        print "YOU ARE TRYING TO SEND TO A P2SH ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
+        get_consent("I am aware that the destination address is P2SH")
+        outscript = "\xa9\x14" + addr[1:] + "\x87"
+    else:
+        raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
 
-if keytype in ("standard", "segwit"):
-    tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype == "segwit")
+if keytype in ("standard", "segwit", "segwitbech32"):
+    tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype)
     txhash = doublesha(plaintx)
 else:
     raise Exception("Not implemented!")
@@ -590,11 +660,19 @@ print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s TO %s!" % 
 print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!"
 
 # avoid bad RAM errors in destination address
-idx = tx.index(addr[1:11])
-part2 = tx[idx+10:idx+20]
-idx = tx.index(addr[11:21])
-part1 = tx[idx-10:idx]
-testaddr = b58encode(addr[0] + part1 + part2)
+if args.destaddr.startswith("bc1"):
+    idx = tx.index(addr[:10])
+    part2 = tx[idx+10:idx+20]
+    idx = tx.index(addr[10:20])
+    part1 = tx[idx-10:idx]
+    testaddr = bech32encode("bc", part1 + part2)
+else:
+    idx = tx.index(addr[1:11])
+    part2 = tx[idx+10:idx+20]
+    idx = tx.index(addr[11:21])
+    part1 = tx[idx-10:idx]
+    testaddr = b58encode(addr[0] + part1 + part2)
+    
 if args.destaddr != testaddr or outscript not in tx:
     raise Exception("Corrupted destination address! Check your RAM!")
 
