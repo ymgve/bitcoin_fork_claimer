@@ -398,9 +398,13 @@ class BitcoinFork(object):
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
-        sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
 
-        if keytype == "standard":
+        if keytype == "p2pk":
+            sigblock = lengthprefixed(signature)
+        else:
+            sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
+
+        if keytype in ("p2pk", "standard"):
             script = lengthprefixed(sigblock)
         elif keytype == "segwit":
             script = "\x17\x16\x00\x14" + sourceh160
@@ -411,14 +415,14 @@ class BitcoinFork(object):
             
         plaintx = version + self.BCDgarbage + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
         
-        if keytype == "standard":
+        if keytype in ("p2pk", "standard"):
             return plaintx, plaintx
         else:
             witnesstx = version + self.BCDgarbage + "\x00\x01" + plaintx[4+len(self.BCDgarbage):-4] + "\x02" + sigblock + locktime
             return witnesstx, plaintx
         
     def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
-        if keytype != "standard":
+        if keytype in ("segwit", "segwitbech32"):
             return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype)
             
         version = struct.pack("<I", self.txversion)
@@ -433,7 +437,11 @@ class BitcoinFork(object):
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
-        sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
+        
+        if keytype == "p2pk":
+            sigblock = lengthprefixed(signature)
+        else:
+            sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
         
         plaintx = version + self.BCDgarbage + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(1) + txout + locktime
         return plaintx, plaintx
@@ -576,9 +584,23 @@ class BitcoinPizza(BitcoinFork):
         self.signid = self.signtype | (47 << 8)
         self.PUBKEY_ADDRESS = chr(55)
         self.SCRIPT_ADDRESS = chr(80)
-        
+
+class BitcoinNew(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTN"
+        self.fullname = "Bitcoin New"
+        self.hardforkheight = 501000
+        self.magic = 0x344d37a1
+        self.port = 8838
+        self.seeds = ("dnsseed.bitcoin-new.org",)
+        self.signtype = 0x41
+        self.signid = self.signtype | (88 << 8)
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -586,6 +608,8 @@ parser.add_argument("destaddr", help="Destination address of the coins")
 parser.add_argument("--fee", help="Fee measured in Satoshis, default is 1000", type=int, default=1000)
 parser.add_argument("--txindex", help="Manually specified txindex, skips blockchain.info API query", type=int)
 parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
+parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
+
 args = parser.parse_args()
 
 if args.cointicker == "BTF":
@@ -606,6 +630,8 @@ if args.cointicker == "BCD":
     coin = BitcoinDiamond()
 if args.cointicker == "BPA":
     coin = BitcoinPizza()
+if args.cointicker == "BTN":
+    coin = BitcoinNew()
     
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
@@ -614,7 +640,10 @@ if args.txindex is not None and args.satoshis is not None:
 else:
     txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
-    if keytype == "standard":
+    if args.p2pk:
+        keytype = "p2pk"
+        script = serializepubkey(pubkey) + "\xac"
+    elif keytype == "standard":
         script = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
     elif keytype == "segwit":
         script = "\xa9\x14" + hash160("\x00\x14" + sourceh160) + "\x87"
@@ -644,7 +673,7 @@ else:
     else:
         raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
 
-if keytype in ("standard", "segwit", "segwitbech32"):
+if keytype in ("p2pk", "standard", "segwit", "segwitbech32"):
     tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype)
     txhash = doublesha(plaintx)
 else:
