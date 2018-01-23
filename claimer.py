@@ -384,11 +384,11 @@ class BitcoinFork(object):
         self.BCDgarbage = ""
         self.txversion = 1
         
-    def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
+    def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
         version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
-        inscript = lengthprefixed("\x76\xa9\x14" + sourceh160 + "\x88\xac")
+        inscript = lengthprefixed(signscript)
         satoshis = struct.pack("<Q", sourcesatoshis)
         txout = struct.pack("<Q", sourcesatoshis - fee) + lengthprefixed(outscript)
         locktime = struct.pack("<I", 0)
@@ -421,14 +421,14 @@ class BitcoinFork(object):
             witnesstx = version + self.BCDgarbage + "\x00\x01" + plaintx[4+len(self.BCDgarbage):-4] + "\x02" + sigblock + locktime
             return witnesstx, plaintx
         
-    def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
+    def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
         if keytype in ("segwit", "segwitbech32"):
             return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype)
             
         version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
-        inscript = lengthprefixed("\x76\xa9\x14" + sourceh160 + "\x88\xac")
+        inscript = lengthprefixed(signscript)
         txout = struct.pack("<Q", sourcesatoshis - fee) + lengthprefixed(outscript)
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
@@ -641,24 +641,29 @@ if args.height is not None and coin.hardforkheight < args.height:
 
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
+if args.p2pk:
+    keytype = "p2pk"
+    srcscript = lengthprefixed(serializepubkey(pubkey)) + "\xac"
+elif keytype == "standard":
+    srcscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
+elif keytype == "segwit":
+    srcscript = "\xa9\x14" + hash160("\x00\x14" + sourceh160) + "\x87"
+elif keytype == "segwitbech32":
+    srcscript = "\x00\x14" + sourceh160
+else:
+    raise Exception("Not implemented!")
+
+if keytype in ("p2pk", "standard"):
+    signscript = srcscript
+else:
+    signscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
+
 if args.txindex is not None and args.satoshis is not None:
     txindex, satoshis = args.txindex, args.satoshis
 else:
     txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
-    if args.p2pk:
-        keytype = "p2pk"
-        script = serializepubkey(pubkey) + "\xac"
-    elif keytype == "standard":
-        script = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
-    elif keytype == "segwit":
-        script = "\xa9\x14" + hash160("\x00\x14" + sourceh160) + "\x87"
-    elif keytype == "segwitbech32":
-        script = "\x00\x14" + sourceh160
-    else:
-        raise Exception("Not implemented!")
-    
-    if bciscript != script:
+    if bciscript != srcscript:
         raise Exception("Script type in source output that is not supported!")
 
 if args.destaddr.startswith("bc1"):
@@ -680,7 +685,7 @@ else:
         raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
 
 if keytype in ("p2pk", "standard", "segwit", "segwitbech32"):
-    tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype)
+    tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, signscript, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype)
     txhash = doublesha(plaintx)
 else:
     raise Exception("Not implemented!")
