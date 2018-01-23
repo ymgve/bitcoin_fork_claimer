@@ -609,6 +609,7 @@ parser.add_argument("--fee", help="Fee measured in Satoshis, default is 1000", t
 parser.add_argument("--txindex", help="Manually specified txindex, skips blockchain.info API query", type=int)
 parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
 parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
+parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
 
 args = parser.parse_args()
 
@@ -633,6 +634,11 @@ if args.cointicker == "BPA":
 if args.cointicker == "BTN":
     coin = BitcoinNew()
     
+if args.height is not None and coin.hardforkheight < args.height:
+    print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
+    print "(fork at height %d)" % coin.hardforkheight
+    exit()
+
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
 if args.txindex is not None and args.satoshis is not None:
