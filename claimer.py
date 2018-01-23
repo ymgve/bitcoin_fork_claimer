@@ -643,7 +643,7 @@ keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey,
 
 if args.p2pk:
     keytype = "p2pk"
-    srcscript = lengthprefixed(serializepubkey(pubkey)) + "\xac"
+    srcscript = lengthprefixed(serializepubkey(pubkey, compressed)) + "\xac"
 elif keytype == "standard":
     srcscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
 elif keytype == "segwit":
