@@ -351,7 +351,7 @@ def recv_all(s, length):
     while len(ret) < length:
         temp = s.recv(length - len(ret))
         if len(temp) == 0:
-            raise Exception("Connection reset!")
+            raise socket.error("Connection reset!")
         ret += temp
         
     return ret
@@ -359,19 +359,6 @@ def recv_all(s, length):
 class Client(object):
     def __init__(self, coin):
         self.coin = coin
-        
-    def connect(self):
-        index = ord(os.urandom(1)) % len(coin.seeds)
-        while True:
-            try:
-                address = (coin.seeds[index], coin.port)
-                print "trying to connect to", address
-                self.sc = socket.create_connection(address)
-                print "connected to", address
-                break
-            except:
-                traceback.print_exc()
-                index = (index + 1) % len(coin.seeds)
         
     def send(self, cmd, msg):
         magic = struct.pack("<L", coin.magic)
@@ -391,6 +378,93 @@ class Client(object):
         payload = recv_all(self.sc, payloadlen)
         return cmd, payload
         
+    def send_tx(self, txhash, tx, checkfee):
+        serverindex = ord(os.urandom(1)) % len(coin.seeds)
+        while True:
+            try:
+                address = (coin.seeds[serverindex], coin.port)
+                print "trying to connect to", address
+                self.sc = socket.create_connection(address)
+                print "connected to", address
+
+                services = 0
+                localaddr = "\x00" * 8 + "00000000000000000000FFFF".decode("hex") + "\x00" * 6
+                nonce = os.urandom(8)
+                user_agent = "Scraper"
+                msg = struct.pack("<IQQ", coin.versionno, services, int(time.time())) + localaddr + localaddr + nonce + lengthprefixed(user_agent) + struct.pack("<IB", 0, 0)
+                client.send("version", msg)
+
+                while True:
+                    cmd, payload = client.recv_msg()
+                    print "received", cmd, "size", len(payload)
+                    if cmd == "version":
+                        client.send("verack", "")
+                        
+                    elif cmd == "sendheaders":
+                        msg = make_varint(0)
+                        client.send("headers", msg)
+                        
+                    elif cmd == "ping":
+                        client.send("pong", payload)
+                        client.send("inv", "\x01" + struct.pack("<I", 1) + txhash)
+                        client.send("mempool", "")
+                        #client.send("getaddr", "")
+                        
+                    elif cmd == "getdata":
+                        if payload == "\x01\x01\x00\x00\x00" + txhash:
+                            print "sending txhash"
+                            client.send("tx", tx)
+                         
+                    elif cmd == "feefilter":
+                        minfee = struct.unpack("<Q", payload)[0]
+                        print "server requires minimum fee of %d satoshis" % minfee
+                        if minfee <= checkfee:
+                            print "our fee is larger or equal, it should be OK"
+                        else:
+                            print "OUR FEE IS TOO SMALL, transaction might not be accepted"
+                            
+                    elif cmd == "inv":
+                        blocks_to_get = []
+                        st = cStringIO.StringIO(payload)
+                        ninv = read_varint(st)
+                        for i in xrange(ninv):
+                            invtype = struct.unpack("<I", st.read(4))[0]
+                            invhash = st.read(32)
+                            
+                            if invtype == 1:
+                                if invhash == txhash:
+                                    print "OUR TRANSACTION IS IN THEIR MEMPOOL, TRANSACTION ACCEPTED! YAY!"
+                            elif invtype == 2:
+                                blocks_to_get.append(invhash)
+                                print "New block observed", invhash[::-1].encode("hex")
+                                
+                        if len(blocks_to_get) > 0:
+                            inv = ["\x02\x00\x00\x00" + invhash for invhash in blocks_to_get]
+                            msg = make_varint(len(inv)) + "".join(inv)
+                            client.send("getdata", msg)
+                        
+                    elif cmd == "block":
+                        if tx in payload or plaintx in payload:
+                            print "BLOCK WITH OUR TRANSACTION OBSERVED! YES!"
+                            
+                    elif cmd == "addr":
+                        st = cStringIO.StringIO(payload)
+                        naddr = read_varint(st)
+                        for i in xrange(naddr):
+                            data = st.read(30)
+                            if data[12:24] == "\x00" * 10 + "\xff\xff":
+                                print "got peer ipv4 address %d.%d.%d.%d port %d" % struct.unpack(">BBBBH", data[24:30])
+                            else:
+                                print "got peer ipv6 address %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x port %d" % struct.unpack(">HHHHHHHHH", data[12:30])
+                        
+                    else:
+                        print repr(cmd), repr(payload)
+                
+            except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
+                traceback.print_exc()
+                serverindex = (serverindex + 1) % len(coin.seeds)
+
+    
 class BitcoinFork(object):
     def __init__(self):
         self.coinratio = 1.0
@@ -758,77 +832,5 @@ print "generated transaction", txhash[::-1].encode("hex")
 print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
 
 client = Client(coin)
-client.connect()
+client.send_tx(txhash, tx, args.fee)
 
-services = 0
-localaddr = "\x00" * 8 + "00000000000000000000FFFF".decode("hex") + "\x00" * 6
-nonce = os.urandom(8)
-user_agent = "Scraper"
-msg = struct.pack("<IQQ", coin.versionno, services, int(time.time())) + localaddr + localaddr + nonce + lengthprefixed(user_agent) + struct.pack("<IB", 0, 0)
-client.send("version", msg)
-
-while True:
-    cmd, payload = client.recv_msg()
-    print "received", cmd, "size", len(payload)
-    if cmd == "version":
-        client.send("verack", "")
-        
-    elif cmd == "sendheaders":
-        msg = make_varint(0)
-        client.send("headers", msg)
-        
-    elif cmd == "ping":
-        client.send("pong", payload)
-        client.send("inv", "\x01" + struct.pack("<I", 1) + txhash)
-        client.send("mempool", "")
-        #client.send("getaddr", "")
-        
-    elif cmd == "getdata":
-        if payload == "\x01\x01\x00\x00\x00" + txhash:
-            print "sending txhash"
-            client.send("tx", tx)
-         
-    elif cmd == "feefilter":
-        minfee = struct.unpack("<Q", payload)[0]
-        print "server requires minimum fee of %d satoshis" % minfee
-        if minfee <= args.fee:
-            print "our fee is larger or equal, it should be OK"
-        else:
-            print "OUR FEE IS TOO SMALL, transaction might not be accepted"
-            
-    elif cmd == "inv":
-        blocks_to_get = []
-        st = cStringIO.StringIO(payload)
-        ninv = read_varint(st)
-        for i in xrange(ninv):
-            invtype = struct.unpack("<I", st.read(4))[0]
-            invhash = st.read(32)
-            
-            if invtype == 1:
-                if invhash == txhash:
-                    print "OUR TRANSACTION IS IN THEIR MEMPOOL, TRANSACTION ACCEPTED! YAY!"
-            elif invtype == 2:
-                blocks_to_get.append(invhash)
-                print "New block observed", invhash[::-1].encode("hex")
-                
-        if len(blocks_to_get) > 0:
-            inv = ["\x02\x00\x00\x00" + invhash for invhash in blocks_to_get]
-            msg = make_varint(len(inv)) + "".join(inv)
-            client.send("getdata", msg)
-        
-    elif cmd == "block":
-        if tx in payload or plaintx in payload:
-            print "BLOCK WITH OUR TRANSACTION OBSERVED! YES!"
-            
-    elif cmd == "addr":
-        st = cStringIO.StringIO(payload)
-        naddr = read_varint(st)
-        for i in xrange(naddr):
-            data = st.read(30)
-            if data[12:24] == "\x00" * 10 + "\xff\xff":
-                print "got peer ipv4 address %d.%d.%d.%d port %d" % struct.unpack(">BBBBH", data[24:30])
-            else:
-                print "got peer ipv6 address %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x port %d" % struct.unpack(">HHHHHHHHH", data[12:30])
-        
-    else:
-        print repr(cmd), repr(payload)
