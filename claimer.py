@@ -423,7 +423,7 @@ class BitcoinFork(object):
         
     def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
         if keytype in ("segwit", "segwitbech32"):
-            return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype)
+            return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype)
             
         version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
