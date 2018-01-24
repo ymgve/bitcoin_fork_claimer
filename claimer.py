@@ -599,8 +599,23 @@ class BitcoinNew(BitcoinFork):
         self.PUBKEY_ADDRESS = chr(0)
         self.SCRIPT_ADDRESS = chr(5)
 
+class BitcoinHot(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTH"
+        self.fullname = "Bitcoin Hot"
+        self.hardforkheight = 498848
+        self.magic = 0x04ad77d1
+        self.port = 8222
+        self.seeds = ("seed-us.bitcoinhot.co", "seed-jp.bitcoinhot.co", "seed-hk.bitcoinhot.co", "seed-uk.bitcoinhot.co", "seed-cn.bitcoinhot.co")
+        self.signtype = 0x41
+        self.signid = self.signtype | (53 << 8)
+        self.PUBKEY_ADDRESS = chr(40)
+        self.SCRIPT_ADDRESS = chr(5) # NOT CERTAIN
+        self.versionno = 70016
+
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -633,6 +648,8 @@ if args.cointicker == "BPA":
     coin = BitcoinPizza()
 if args.cointicker == "BTN":
     coin = BitcoinNew()
+if args.cointicker == "BTH":
+    coin = BitcoinHot()
     
 if args.height is not None and coin.hardforkheight < args.height:
     print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
@@ -773,6 +790,7 @@ while True:
                     print "OUR TRANSACTION IS IN THEIR MEMPOOL, TRANSACTION ACCEPTED! YAY!"
             elif invtype == 2:
                 blocks_to_get.append(invhash)
+                print "New block observed", invhash[::-1].encode("hex")
                 
         if len(blocks_to_get) > 0:
             inv = ["\x02\x00\x00\x00" + invhash for invhash in blocks_to_get]
