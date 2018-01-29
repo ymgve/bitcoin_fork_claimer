@@ -347,14 +347,22 @@ def get_consent(consentstring):
         raise Exception("User did not write '%s', aborting" % consentstring)
 
 class Client(object):
+    
+    _MAX_MEMPOOL_CHECKS = 2
+    _MAX_CONNECTION_RETRIES = 2
+    
     def __init__(self, coin):
         self.coin = coin
+        self._transaction_sent = False
+        self._transaction_accepted = None
+        self._mempool_check_count = 0
+        self._connection_retries = 0
         
     def send(self, cmd, msg):
-        magic = struct.pack("<L", coin.magic)
+        magic = struct.pack("<L", self.coin.magic)
         wrapper = magic + cmd.ljust(12, "\x00") + struct.pack("<L", len(msg)) + hashlib.sha256(hashlib.sha256(msg).digest()).digest()[0:4] + msg
         self.sc.sendall(wrapper)
-        print "sent", repr(cmd)
+        print "---> %s (%d bytes)" % (repr(cmd), len(msg))
         
     def recv_msg(self):
         def recv_all(length):
@@ -376,24 +384,27 @@ class Client(object):
         return cmd, payload
         
     def send_tx(self, txhash, tx, checkfee):
-        serverindex = ord(os.urandom(1)) % len(coin.seeds)
+        serverindex = ord(os.urandom(1)) % len(self.coin.seeds)
+        txhash_hexfmt = txhash[::-1].encode("hex")
         while True:
             try:
-                address = (coin.seeds[serverindex], coin.port)
-                print "trying to connect to", address
+                #address = (coin.seeds[serverindex], self.coin.port)
+                address = ("192.168.56.101", '8346')
+                print "Connecting to", address, "...",
                 self.sc = socket.create_connection(address)
-                print "connected to", address
+                print "SUCCESS!"
 
                 services = 0
                 localaddr = "\x00" * 8 + "00000000000000000000FFFF".decode("hex") + "\x00" * 6
                 nonce = os.urandom(8)
                 user_agent = "Scraper"
-                msg = struct.pack("<IQQ", coin.versionno, services, int(time.time())) + localaddr + localaddr + nonce + lengthprefixed(user_agent) + struct.pack("<IB", 0, 0)
+                msg = struct.pack("<IQQ", self.coin.versionno, services, int(time.time())) + (
+                    localaddr + localaddr + nonce + lengthprefixed(user_agent) + struct.pack("<IB", 0, 0))
                 client.send("version", msg)
 
                 while True:
                     cmd, payload = client.recv_msg()
-                    print "received", cmd, "size", len(payload)
+                    print "<--- '%s' (%d bytes)" % (cmd, len(payload))
                     if cmd == "version":
                         client.send("verack", "")
                         
@@ -403,46 +414,87 @@ class Client(object):
                         
                     elif cmd == "ping":
                         client.send("pong", payload)
-                        client.send("inv", "\x01" + struct.pack("<I", 1) + txhash)
+
+                        # Advertise OUR txhash to the peer if not already done.
+                        # The purpose is to get the peer to add the transaction to their
+                        # mempool and propagate it to the rest of the network.
+                        if not self._transaction_sent:
+                            client.send("inv", "\x01" + struct.pack("<I", 1) + txhash)
+                        elif not self._transaction_accepted:
+                            client.send("tx", tx)
+                            print "\tRe-sent transaction: %s" % txhash_hexfmt
+
                         client.send("mempool", "")
-                        #client.send("getaddr", "")
                         
                     elif cmd == "getdata":
                         if payload == "\x01\x01\x00\x00\x00" + txhash:
-                            print "sending txhash"
+                            print "\tPeer requesting transaction details for %s" % txhash_hexfmt
                             client.send("tx", tx)
+                            print "\tSENT TRANSACTION: %s" % txhash_hexfmt
+                            self._transaction_sent = True
+
+                        # If a getdata comes in without our txhash, it generally means the tx was rejected.
+                        elif self._transaction_sent:
+                            print "\tReceived getdata without our txhash. The transaction may have been rejected."
+                            print "\tThis script will retransmit the transaction and monitor the mempool for a few minutes before giving up."
                          
                     elif cmd == "feefilter":
                         minfee = struct.unpack("<Q", payload)[0]
-                        print "server requires minimum fee of %d satoshis" % minfee
-                        if minfee <= checkfee:
-                            print "our fee is larger or equal, it should be OK"
+                        print "\tserver requires minimum fee of %d satoshis" % minfee
+                        if checkfee >= minfee:
+                            print "\tour fee is >= minimum fee, so should be OK"
                         else:
-                            print "OUR FEE IS TOO SMALL, transaction might not be accepted"
+                            print "\tOUR FEE IS TOO SMALL, transaction might not be accepted"
                             
                     elif cmd == "inv":
                         blocks_to_get = []
                         st = cStringIO.StringIO(payload)
                         ninv = read_varint(st)
-                        for _ in xrange(ninv):
+                        transaction_found = False
+                        invtypes = {1: 'transaction', 2: 'block'}
+                        for i in xrange(ninv):
                             invtype = struct.unpack("<I", st.read(4))[0]
                             invhash = st.read(32)
+                            invtypestr = invtypes[invtype] if invtype in invtypes else str(invtype)
+
+                            if i < 10:
+                                print "\t%s: %s" % (invtypestr, invhash[::-1].encode("hex"))
+                            elif i == 10:
+                                print "\t..."
+                                print "\tNot printing additional %d transactions" % (ninv - i)
                             
                             if invtype == 1:
                                 if invhash == txhash:
-                                    print "OUR TRANSACTION IS IN THEIR MEMPOOL, TRANSACTION ACCEPTED! YAY!"
+                                    transaction_found = True
                             elif invtype == 2:
                                 blocks_to_get.append(invhash)
-                                print "New block observed", invhash[::-1].encode("hex")
-                                
-                        if len(blocks_to_get) > 0:
+                        if transaction_found and not self._transaction_accepted:        
+                            print "\n\tOUR TRANSACTION IS IN THEIR MEMPOOL, TRANSACTION ACCEPTED! YAY!"
+                            print "\tConsider leaving this script running until it detects the transaction in a block."
+                            self._transaction_accepted = True
+                        elif transaction_found:
+                            print "\tTransaction still in mempool. Continue waiting for block inclusion."
+                        elif not blocks_to_get:
+                            print "\n\tOur transaction was not found in the mempool."
+                            self._mempool_check_count += 1
+                            if self._mempool_check_count <= self._MAX_MEMPOOL_CHECKS:
+                                print "\tWill retransmit and check again %d more times." % (self._MAX_MEMPOOL_CHECKS - self._mempool_check_count)
+                            else:
+                                raise Exception("\tGiving up on transaction. Please verify that the inputs have not already been spent.")
+
+                        if blocks_to_get:
                             inv = ["\x02\x00\x00\x00" + invhash for invhash in blocks_to_get]
                             msg = make_varint(len(inv)) + "".join(inv)
                             client.send("getdata", msg)
+                            print "\trequesting %d blocks" % len(blocks_to_get)
                         
                     elif cmd == "block":
                         if tx in payload or plaintx in payload:
-                            print "BLOCK WITH OUR TRANSACTION OBSERVED! YES!"
+                            print "\tBLOCK WITH OUR TRANSACTION OBSERVED! YES!"
+                            print "\tYour coins have been successfully sent. Exiting..."
+                            return
+                        else:
+                            print "\tTransaction not included in observed block."
                             
                     elif cmd == "addr":
                         st = cStringIO.StringIO(payload)
@@ -450,16 +502,21 @@ class Client(object):
                         for _ in xrange(naddr):
                             data = st.read(30)
                             if data[12:24] == "\x00" * 10 + "\xff\xff":
-                                print "got peer ipv4 address %d.%d.%d.%d port %d" % struct.unpack(">BBBBH", data[24:30])
+                                address = "%d.%d.%d.%d:%d" % struct.unpack(">BBBBH", data[24:30])
                             else:
-                                print "got peer ipv6 address %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x port %d" % struct.unpack(">HHHHHHHHH", data[12:30])
-                        
-                    else:
+                                address = "[%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x]:%d" % struct.unpack(">HHHHHHHHH", data[12:30])
+                            print "\tGot peer address: %s" % address
+                    elif cmd not in ('sendcmpct', 'verack'):
                         print repr(cmd), repr(payload)
                 
             except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
-                traceback.print_exc()
-                serverindex = (serverindex + 1) % len(coin.seeds)
+                if self._connection_retries >= self._MAX_CONNECTION_RETRIES:
+                    raise
+                print "\tConnection failed with: %s" % repr(e)
+                print "\tWill retry %d more times." % (self._MAX_CONNECTION_RETRIES - self._connection_retries)
+                serverindex = (serverindex + 1) % len(self.coin.seeds)
+                self._connection_retries += 1
+                time.sleep(2)
 
     
 class BitcoinFork(object):
@@ -720,30 +777,30 @@ parser.add_argument("--height", help="Manually specified block height of transac
 
 args = parser.parse_args()
 
-if args.cointicker == "BTF":
-    coin = BitcoinFaith()
-if args.cointicker == "BTW":
-    coin = BitcoinWorld()
-if args.cointicker == "BTG":
-    coin = BitcoinGold()
-if args.cointicker == "BCX":
-    coin = BitcoinX()
 if args.cointicker == "B2X":
     coin = Bitcoin2X()
-if args.cointicker == "UBTC":
-    coin = UnitedBitcoin()
-if args.cointicker == "SBTC":
-    coin = SuperBitcoin()
-if args.cointicker == "BCD":
+elif args.cointicker == "BCD":
     coin = BitcoinDiamond()
-if args.cointicker == "BPA":
+elif args.cointicker == "BCX":
+    coin = BitcoinX()
+elif args.cointicker == "BPA":
     coin = BitcoinPizza()
-if args.cointicker == "BTN":
-    coin = BitcoinNew()
-if args.cointicker == "BTH":
+elif args.cointicker == "BTG":
+    coin = BitcoinGold()
+elif args.cointicker == "BTF":
+    coin = BitcoinFaith()
+elif args.cointicker == "BTH":
     coin = BitcoinHot()
+elif args.cointicker == "BTN":
+    coin = BitcoinNew()
+elif args.cointicker == "BTW":
+    coin = BitcoinWorld()
+elif args.cointicker == "SBTC":
+    coin = SuperBitcoin()
+elif args.cointicker == "UBTC":
+    coin = UnitedBitcoin()
     
-if args.height is not None and coin.hardforkheight < args.height:
+if args.height and coin.hardforkheight < args.height:
     print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
     print "(fork at height %d)" % coin.hardforkheight
     exit()
