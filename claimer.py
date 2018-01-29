@@ -346,16 +346,6 @@ def get_consent(consentstring):
     if answer != consentstring:
         raise Exception("User did not write '%s', aborting" % consentstring)
 
-def recv_all(s, length):
-    ret = ""
-    while len(ret) < length:
-        temp = s.recv(length - len(ret))
-        if len(temp) == 0:
-            raise socket.error("Connection reset!")
-        ret += temp
-        
-    return ret
-    
 class Client(object):
     def __init__(self, coin):
         self.coin = coin
@@ -367,15 +357,22 @@ class Client(object):
         print "sent", repr(cmd)
         
     def recv_msg(self):
-        header = recv_all(self.sc, 24)
-        
+        def recv_all(length):
+            ret = ""
+            while len(ret) < length:
+                temp = self.sc.recv(length - len(ret))
+                if len(temp) == 0:
+                    raise socket.error("Connection reset!")
+                ret += temp
+            return ret
+
+        header = recv_all(24)
         if len(header) != 24:
-            print "INVALID HEADER LENGTH", repr(head)
-            exit()
+            raise Exception("INVALID HEADER LENGTH\n%s" % repr(header))
 
         cmd = header[4:16].rstrip("\x00")
         payloadlen = struct.unpack("<I", header[16:20])[0]
-        payload = recv_all(self.sc, payloadlen)
+        payload = recv_all(payloadlen)
         return cmd, payload
         
     def send_tx(self, txhash, tx, checkfee):
@@ -427,7 +424,7 @@ class Client(object):
                         blocks_to_get = []
                         st = cStringIO.StringIO(payload)
                         ninv = read_varint(st)
-                        for i in xrange(ninv):
+                        for _ in xrange(ninv):
                             invtype = struct.unpack("<I", st.read(4))[0]
                             invhash = st.read(32)
                             
@@ -450,7 +447,7 @@ class Client(object):
                     elif cmd == "addr":
                         st = cStringIO.StringIO(payload)
                         naddr = read_varint(st)
-                        for i in xrange(naddr):
+                        for _ in xrange(naddr):
                             data = st.read(30)
                             if data[12:24] == "\x00" * 10 + "\xff\xff":
                                 print "got peer ipv4 address %d.%d.%d.%d port %d" % struct.unpack(">BBBBH", data[24:30])
@@ -473,6 +470,8 @@ class BitcoinFork(object):
         self.extrabytes = ""
         self.BCDgarbage = ""
         self.txversion = 1
+        self.signtype = 0x01
+        self.signid = self.signtype
         
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
         version = struct.pack("<I", self.txversion)
