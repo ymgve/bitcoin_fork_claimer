@@ -340,7 +340,7 @@ def get_tx_details_from_blockchaininfo(txid, addr, hardforkheight):
     return found
     
 def get_consent(consentstring):
-    print "Write '%s' to continue" % consentstring
+    print "\nWrite '%s' to continue" % consentstring
 
     answer = raw_input()
     if answer != consentstring:
@@ -388,8 +388,7 @@ class Client(object):
         txhash_hexfmt = txhash[::-1].encode("hex")
         while True:
             try:
-                #address = (coin.seeds[serverindex], self.coin.port)
-                address = ("192.168.56.101", '8346')
+                address = (coin.seeds[serverindex], self.coin.port)
                 print "Connecting to", address, "...",
                 self.sc = socket.create_connection(address)
                 print "SUCCESS!"
@@ -415,9 +414,6 @@ class Client(object):
                     elif cmd == "ping":
                         client.send("pong", payload)
 
-                        # Advertise OUR txhash to the peer if not already done.
-                        # The purpose is to get the peer to add the transaction to their
-                        # mempool and propagate it to the rest of the network.
                         if not self._transaction_sent:
                             client.send("inv", "\x01" + struct.pack("<I", 1) + txhash)
                         elif not self._transaction_accepted:
