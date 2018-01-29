@@ -3,6 +3,20 @@ without downloading the full blockchains or messing with the official clients.
 
 Requires Python 2.7
 
+The following coins are recognized, although may not be fully tested:
+
+*  B2X - [Segwit 2X](https://b2x-segwit.io/)
+*  BCD - [Bitcoin Diamond](http://www.btcd.io/)
+*  BCX - [Bitcoin X](https://bcx.org/)
+*  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
+*  BTF - [Bitcoin Faith](http://bitcoinfaith.org/)
+*  BTG - [Bitcoin Gold](https://bitcoingold.org/)
+*  BTH - [Bitcoin Hot](https://www.bithot.org/)
+*  BTN - [Bitcoin New](http://btn.kim/)
+*  BTW - [Bitcoin World](http://www.btw.one/)
+*  SBTC - [Super Bitcoin](http://superbtc.org/)
+*  UBTC - [United Bitcoin](https://www.ub.com/)
+
 At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN
 
 It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN networks so far.
