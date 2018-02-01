@@ -757,10 +757,25 @@ class BitcoinHot(BitcoinFork):
         self.versionno = 70016
         self.coinratio = 100.0
 
+class BitcoinVote(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTV"
+        self.fullname = "Bitcoin Vote"
+        self.hardforkheight = 505050
+        self.magic = 0xd9b4bef9
+        self.port = 8333
+        self.seeds = ("seed1.bitvote.one", "seed2.bitvote.one", "seed3.bitvote.one")
+        self.signtype = 0x65
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -789,6 +804,8 @@ elif args.cointicker == "BTH":
     coin = BitcoinHot()
 elif args.cointicker == "BTN":
     coin = BitcoinNew()
+elif args.cointicker == "BTV":
+    coin = BitcoinVote()
 elif args.cointicker == "BTW":
     coin = BitcoinWorld()
 elif args.cointicker == "SBTC":
