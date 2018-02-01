@@ -348,8 +348,8 @@ def get_consent(consentstring):
 
 class Client(object):
     
-    _MAX_MEMPOOL_CHECKS = 2
-    _MAX_CONNECTION_RETRIES = 2
+    _MAX_MEMPOOL_CHECKS = 5
+    _MAX_CONNECTION_RETRIES = 100
     
     def __init__(self, coin):
         self.coin = coin
@@ -390,7 +390,7 @@ class Client(object):
             try:
                 address = (coin.seeds[serverindex], self.coin.port)
                 print "Connecting to", address, "...",
-                self.sc = socket.create_connection(address)
+                self.sc = socket.create_connection(address, 10)
                 print "SUCCESS!"
 
                 services = 0
@@ -772,10 +772,28 @@ class BitcoinVote(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
 
+class BitcoinTop(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTT"
+        self.fullname = "Bitcoin Top"
+        self.hardforkheight = 501118
+        self.magic = 0xd9b4bef9
+        self.port = 18888
+        self.seeds = ("dnsseed.bitcointop.org", "seed.bitcointop.org", "worldseed.bitcointop.org", "dnsseed.bitcointop.group", "seed.bitcointop.group",
+            "worldseed.bitcointop.group", "dnsseed.bitcointop.club", "seed.bitcointop.club", "worldseed.bitcointop.club")
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
+        self.txversion = 12
+        self.BCDgarbage = "\xff" * 32
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -804,6 +822,8 @@ elif args.cointicker == "BTH":
     coin = BitcoinHot()
 elif args.cointicker == "BTN":
     coin = BitcoinNew()
+elif args.cointicker == "BTT":
+    coin = BitcoinTop()
 elif args.cointicker == "BTV":
     coin = BitcoinVote()
 elif args.cointicker == "BTW":
