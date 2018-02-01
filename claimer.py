@@ -796,10 +796,10 @@ elif args.cointicker == "BCX":
     coin = BitcoinX()
 elif args.cointicker == "BPA":
     coin = BitcoinPizza()
-elif args.cointicker == "BTG":
-    coin = BitcoinGold()
 elif args.cointicker == "BTF":
     coin = BitcoinFaith()
+elif args.cointicker == "BTG":
+    coin = BitcoinGold()
 elif args.cointicker == "BTH":
     coin = BitcoinHot()
 elif args.cointicker == "BTN":
