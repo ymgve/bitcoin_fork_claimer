@@ -837,6 +837,7 @@ class BitcoinPay(BitcoinFork):
         self.signid = self.signtype | (80 << 8)
         self.PUBKEY_ADDRESS = chr(0x38)
         self.SCRIPT_ADDRESS = chr(5) # NOT CERTAIN
+        self.coinratio = 10.0
 
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
@@ -984,7 +985,8 @@ if coin.ticker == "BTP":
         print "This does NOT mean the transaction will happen, just that the signature is valid."
         print "All you can do now is wait."
     else:
-        print "Transaction push failed!", repr(res)
+        print "Server says transaction push failed!", repr(res)
+        print "Transaction might still have been accepted, wait for a few minutes to see if it arrives."
     
 else:
     client = Client(coin)
