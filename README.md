@@ -13,6 +13,7 @@ The following coins are recognized, although may not be fully tested:
 *  BTG - [Bitcoin Gold](https://bitcoingold.org/)
 *  BTH - [Bitcoin Hot](https://www.bithot.org/)
 *  BTN - [Bitcoin New](http://btn.kim/)
+*  BTT - [Bitcoin Top](https://bitcointop.org/)
 *  BTV - [Bitcoin Vote](https://bitvote.one/)
 *  BTW - [Bitcoin World](http://www.btw.one/)
 *  SBTC - [Super Bitcoin](http://superbtc.org/)

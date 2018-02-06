@@ -778,7 +778,7 @@ class BitcoinTop(BitcoinFork):
         self.ticker = "BTT"
         self.fullname = "Bitcoin Top"
         self.hardforkheight = 501118
-        self.magic = 0xd9b4bef9
+        self.magic = 0xd0b4bef9
         self.port = 18888
         self.seeds = ("dnsseed.bitcointop.org", "seed.bitcointop.org", "worldseed.bitcointop.org", "dnsseed.bitcointop.group", "seed.bitcointop.group",
             "worldseed.bitcointop.group", "dnsseed.bitcointop.club", "seed.bitcointop.club", "worldseed.bitcointop.club")
@@ -787,7 +787,7 @@ class BitcoinTop(BitcoinFork):
         self.PUBKEY_ADDRESS = chr(0)
         self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
-        self.txversion = 12
+        self.txversion = 13
         self.BCDgarbage = "\xff" * 32
 
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
