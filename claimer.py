@@ -773,7 +773,7 @@ class BitcoinHot(BitcoinFork):
         self.port = 8222
         self.seeds = ("seed-us.bitcoinhot.co", "seed-jp.bitcoinhot.co", "seed-hk.bitcoinhot.co", "seed-uk.bitcoinhot.co", "seed-cn.bitcoinhot.co")
         self.signtype = 0x41
-        self.signid = self.signtype | (80 << 8)
+        self.signid = self.signtype | (53 << 8)
         self.PUBKEY_ADDRESS = chr(40)
         self.SCRIPT_ADDRESS = chr(5) # NOT CERTAIN
         self.versionno = 70016
