@@ -45,3 +45,19 @@ Standalone mode:
 Default fee is set to 1000 satoshis, but can be changed with the `--fee` option.
 
 USAGE OF THIS SCRIPT IS RISKY AND IF YOU MISTYPE ANYTHING YOU CAN LOSE ALL YOUR COINS
+
+---
+
+There is another python script for claiming FBTC (Fast Bitcoin). The FBTC network is based on the BitShares codebase, so it does not support Segwit. There are no TXIDs or change addresses,
+and you can transfer arbitrary amounts from an address multiple times.
+
+Usage:
+    
+    fbtcclaimer.py <private key in WIF format> <public source address> <destination address> <number of satoshis to send, including fee>
+    fbtcclaimer.py 5K2YUVmWfxbmvsNxCsfvArXdGXm7d5DC9pn4yD75k2UaSYgkXTh 1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE 1aa5cmqmvQq8YQTEqcTmW7dfBNuFwgdCD 3053
+    
+fbtcclaimer.py also requires aes.py to be in the same folder as the script. Thanks to https://github.com/ricmoo/pyaes for the implementation.
+
+---
+
+Any donations can be sent to BTC address `1HDW5sy8trGE8mEKUtNacLPGCx1WRtebnp`

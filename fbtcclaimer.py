@@ -477,7 +477,7 @@ class STCP(object):
         self.send_message(5006, msg)
       
 if len(sys.argv) != 5:
-    print "Usage: fbtcclaimer.py <private key in WIF format> <public source address> <destination address> <number of satoshis to send>"
+    print "Usage: fbtcclaimer.py <private key in WIF format> <public source address> <destination address> <number of satoshis to send, including fee>"
     exit()
     
 wifkey = sys.argv[1]
