@@ -773,7 +773,7 @@ class BitcoinHot(BitcoinFork):
         self.port = 8222
         self.seeds = ("seed-us.bitcoinhot.co", "seed-jp.bitcoinhot.co", "seed-hk.bitcoinhot.co", "seed-uk.bitcoinhot.co", "seed-cn.bitcoinhot.co")
         self.signtype = 0x41
-        self.signid = self.signtype | (53 << 8)
+        self.signid = self.signtype | (80 << 8)
         self.PUBKEY_ADDRESS = chr(40)
         self.SCRIPT_ADDRESS = chr(5) # NOT CERTAIN
         self.versionno = 70016
@@ -827,10 +827,21 @@ class BitCore(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         
+class BitcoinPay(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTP"
+        self.fullname = "Bitcoin Pay"
+        self.hardforkheight = 499345
+        self.signtype = 0x41
+        self.signid = self.signtype | (80 << 8)
+        self.PUBKEY_ADDRESS = chr(0x38)
+        self.SCRIPT_ADDRESS = chr(5) # NOT CERTAIN
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -859,6 +870,8 @@ elif args.cointicker == "BTH":
     coin = BitcoinHot()
 elif args.cointicker == "BTN":
     coin = BitcoinNew()
+elif args.cointicker == "BTP":
+    coin = BitcoinPay()
 elif args.cointicker == "BTT":
     coin = BitcoinTop()
 elif args.cointicker == "BTV":
@@ -962,6 +975,18 @@ get_consent("I am sending coins on the %s network and I accept the risks" % coin
 print "generated transaction", txhash[::-1].encode("hex")
 print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
 
-client = Client(coin)
-client.send_tx(txhash, tx, args.fee)
+if coin.ticker == "BTP":
+    data = '{"raw_tx": "%s"}' % tx.encode("hex")
+    res = urllib2.urlopen("https://bitpie.getcai.com/api/v1/btp/broadcast", data)
+    res = json.loads(res.read())
+    if res["result"] == 1:
+        print "Pushed transaction successfully!"
+        print "This does NOT mean the transaction will happen, just that the signature is valid."
+        print "All you can do now is wait."
+    else:
+        print "Transaction push failed!", repr(res)
+    
+else:
+    client = Client(coin)
+    client.send_tx(txhash, tx, args.fee)
 
