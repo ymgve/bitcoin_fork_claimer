@@ -339,6 +339,28 @@ def get_tx_details_from_blockchaininfo(txid, addr, hardforkheight):
         
     return found
     
+def get_btx_details_from_chainz_cryptoid(addr):
+    print "Querying chainz.cryptoid.info about last unspent transaction for address"
+    url = "https://chainz.cryptoid.info/btx/api.dws?q=unspent&active=%s&key=a660e3112b78" % addr
+
+    request = urllib2.Request(url)
+    request.add_header('User-Agent', 'Mozilla/5.0')
+    opener = urllib2.build_opener() 
+    res = opener.open(request)
+    
+    txinfo = json.loads(res.read())
+    unspent_outputs = txinfo["unspent_outputs"]
+    if len(unspent_outputs) == 0:
+        raise Exception("Block explorer didn't find any coins at that address")
+    
+    outinfo = unspent_outputs[0]
+    txid = outinfo["tx_hash"]
+    txindex = outinfo["tx_ouput_n"]
+    script = outinfo["script"].decode("hex")
+    satoshis = int(outinfo["value"])
+    
+    return txid, txindex, script, satoshis
+
 def get_consent(consentstring):
     print "\nWrite '%s' to continue" % consentstring
 
@@ -790,11 +812,26 @@ class BitcoinTop(BitcoinFork):
         self.txversion = 13
         self.BCDgarbage = "\xff" * 32
 
+class BitCore(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTX"
+        self.fullname = "BitCore"
+        self.hardforkheight = 492820
+        self.magic = 0xd9b4bef9
+        self.port = 8555
+        self.seeds = ("37.120.190.76", "37.120.186.85", "185.194.140.60", "188.71.223.206", "185.194.142.122")
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
+        
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT"])
-parser.add_argument("txid", help="Transaction ID with the source of the coins")
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX"])
+parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
 parser.add_argument("destaddr", help="Destination address of the coins")
@@ -828,6 +865,8 @@ elif args.cointicker == "BTV":
     coin = BitcoinVote()
 elif args.cointicker == "BTW":
     coin = BitcoinWorld()
+elif args.cointicker == "BTX":
+    coin = BitCore()
 elif args.cointicker == "SBTC":
     coin = SuperBitcoin()
 elif args.cointicker == "UBTC":
@@ -860,7 +899,10 @@ else:
 if args.txindex is not None and args.satoshis is not None:
     txindex, satoshis = args.txindex, args.satoshis
 else:
-    txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
+    if args.cointicker == "BTX":
+        args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(args.srcaddr)
+    else:
+        txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
     if bciscript != srcscript:
         raise Exception("Script type in source output that is not supported!")
