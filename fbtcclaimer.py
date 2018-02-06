@@ -1,10 +1,7 @@
 import socket, struct, os, hashlib, cStringIO, time, sys, random
 
-try:
-    from Crypto.Cipher import AES
-except ImportError:
-    raise Exception("This script requires the pycrypto module installed")
-    
+from aes import *
+
 chainid = "0106bc59af196e3a96cec0120bcc313589338fd1e84f81c07cb5cdd1806655c0".decode("hex")
 
 N = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fL
@@ -415,6 +412,7 @@ class STCP(object):
         return data
         
     def connect(self, address):
+        print "trying to connect to", address
         self.sc = socket.create_connection(address)
         self.sc.send(serializepubkey(self.mypubkey, 1))
 
@@ -425,14 +423,16 @@ class STCP(object):
         t = BADCityHash128(self.sharedsecret)
         IV = struct.pack("<QQ", t >> 64, t & lo64mask)
             
-        self.rxcrypt = AES.new(hashlib.sha256(self.sharedsecret).digest(), AES.MODE_CBC, IV)
-        self.txcrypt = AES.new(hashlib.sha256(self.sharedsecret).digest(), AES.MODE_CBC, IV)
+        self.rxcrypt = AESModeOfOperationCBC(hashlib.sha256(self.sharedsecret).digest(), iv = IV)
+        self.txcrypt = AESModeOfOperationCBC(hashlib.sha256(self.sharedsecret).digest(), iv = IV)
 
     def recv_message(self):
         data = self.rxcrypt.decrypt(self.recv_all(16))
         datasize, msgtype = struct.unpack("<II", data[0:8])
         to_read = (8 + datasize - 1) & 0xfffffff0
-        data += self.rxcrypt.decrypt(self.recv_all(to_read))
+        ct = self.recv_all(to_read)
+        for i in xrange(0, len(ct), 16):
+            data += self.rxcrypt.decrypt(ct[i:i+16])
         return msgtype, data[8:8+datasize]
         
     def send_message(self, msgtype, msg):
@@ -442,7 +442,10 @@ class STCP(object):
             padlen = 0
             
         to_send += "\x00" * padlen
-        data = self.txcrypt.encrypt(to_send)
+        data = ""
+        for i in xrange(0, len(to_send), 16):
+            data += self.txcrypt.encrypt(to_send[i:i+16])
+        
         self.sc.sendall(data)
         
     def send_hello(self):
