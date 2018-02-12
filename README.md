@@ -59,5 +59,11 @@ Usage:
 fbtcclaimer.py also requires aes.py to be in the same folder as the script. Thanks to https://github.com/ricmoo/pyaes for the implementation.
 
 ---
+Added another python script to find transactions relative to each fork using a file with a list of addresses separated with a line break to search if there is some fork coins available to claim in each one, and if there is, generate the command neccesary to use claimer.py more easily.
+
+Usage:
+    
+    txfinder.py <cointype> <addresses list file>
+    txfinder.py BTG list.txt
 
 Any donations can be sent to BTC address `1HDW5sy8trGE8mEKUtNacLPGCx1WRtebnp`
