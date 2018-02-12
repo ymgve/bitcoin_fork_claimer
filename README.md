@@ -7,21 +7,26 @@ The following coins are recognized, although may not be fully tested:
 
 *  B2X - [Segwit 2X](https://b2x-segwit.io/)
 *  BCD - [Bitcoin Diamond](http://www.btcd.io/)
+*  BCK - [Bitcoin King](https://btcking.org/) - NOT A TRUE FORK, NOT CLAIMABLE AT THE MOMENT
 *  BCX - [Bitcoin X](https://bcx.org/)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
 *  BTF - [Bitcoin Faith](http://bitcoinfaith.org/)
 *  BTG - [Bitcoin Gold](https://bitcoingold.org/)
 *  BTH - [Bitcoin Hot](https://www.bithot.org/)
 *  BTN - [Bitcoin New](http://btn.kim/)
+*  BTP - [Bitcoin Pay](http://www.btceasypay.com/)
+*  BTSQ - [Bitcoin Community](http://btsq.top/)
 *  BTT - [Bitcoin Top](https://bitcointop.org/)
 *  BTV - [Bitcoin Vote](https://bitvote.one/)
 *  BTW - [Bitcoin World](http://www.btw.one/)
+*  BTX - [Bitcore](https://bitcore.cc/)
+*  CDY - [Bitcoin Candy](https://cdy.one/) - Forked from Bitcoin Cash, not Bitcoin
 *  SBTC - [Super Bitcoin](http://superbtc.org/)
 *  UBTC - [United Bitcoin](https://www.ub.com/)
 
-At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT
+At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ
 
-It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT networks so far.
+It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT, BTP, BTSQ networks so far.
 
 It should support old-style Pay-2-Public-Key that were in use in 2009-2010 (use command line switch --p2pk) but this is UNTESTED at the moment.
 
