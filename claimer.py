@@ -414,7 +414,8 @@ class Client(object):
                 print "Connecting to", address, "...",
                 self.sc = socket.create_connection(address, 10)
                 print "SUCCESS!"
-
+                self.sc.settimeout(120)
+                
                 services = 0
                 localaddr = "\x00" * 8 + "00000000000000000000FFFF".decode("hex") + "\x00" * 6
                 nonce = os.urandom(8)
@@ -547,6 +548,9 @@ class BitcoinFork(object):
         self.txversion = 1
         self.signtype = 0x01
         self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.bch_fork = False
         
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
         version = struct.pack("<I", self.txversion)
@@ -679,8 +683,6 @@ class Bitcoin2X(BitcoinFork):
         self.seeds = ("node1.b2x-segwit.io", "node2.b2x-segwit.io", "node3.b2x-segwit.io", "136.243.147.159", "136.243.171.156", "46.229.165.141", "178.32.3.12")
         self.signtype = 0x21
         self.signid = self.signtype
-        self.PUBKEY_ADDRESS = chr(0)
-        self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         self.versionno = 70015 | (1 << 27)
 
@@ -695,8 +697,6 @@ class UnitedBitcoin(BitcoinFork):
         self.seeds = ("urlelcm1.ub.com", "urlelcm2.ub.com", "urlelcm3.ub.com", "urlelcm4.ub.com", "urlelcm5.ub.com", "urlelcm6.ub.com", "urlelcm7.ub.com", "urlelcm8.ub.com", "urlelcm9.ub.com", "urlelcm10.ub.com")
         self.signtype = 0x09
         self.signid = self.signtype
-        self.PUBKEY_ADDRESS = chr(0)
-        self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         self.versionno = 731800
         self.extrabytes = "\x02ub"
@@ -712,8 +712,6 @@ class SuperBitcoin(BitcoinFork):
         self.seeds = ("seed.superbtca.com", "seed.superbtca.info", "seed.superbtc.org")
         self.signtype = 0x41
         self.signid = self.signtype
-        self.PUBKEY_ADDRESS = chr(0)
-        self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         self.extrabytes = lengthprefixed("sbtc")
         
@@ -728,8 +726,6 @@ class BitcoinDiamond(BitcoinFork):
         self.seeds = ("seed1.dns.btcd.io", "seed2.dns.btcd.io", "seed3.dns.btcd.io", "seed4.dns.btcd.io", "seed5.dns.btcd.io", "seed6.dns.btcd.io")
         self.signtype = 0x01
         self.signid = self.signtype
-        self.PUBKEY_ADDRESS = chr(0)
-        self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         self.txversion = 12
         self.BCDgarbage = "\xff" * 32
@@ -760,8 +756,6 @@ class BitcoinNew(BitcoinFork):
         self.seeds = ("dnsseed.bitcoin-new.org",)
         self.signtype = 0x41
         self.signid = self.signtype | (88 << 8)
-        self.PUBKEY_ADDRESS = chr(0)
-        self.SCRIPT_ADDRESS = chr(5)
 
 class BitcoinHot(BitcoinFork):
     def __init__(self):
@@ -790,8 +784,6 @@ class BitcoinVote(BitcoinFork):
         self.seeds = ("seed1.bitvote.one", "seed2.bitvote.one", "seed3.bitvote.one")
         self.signtype = 0x65
         self.signid = self.signtype
-        self.PUBKEY_ADDRESS = chr(0)
-        self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
 
 class BitcoinTop(BitcoinFork):
@@ -806,8 +798,6 @@ class BitcoinTop(BitcoinFork):
             "worldseed.bitcointop.group", "dnsseed.bitcointop.club", "seed.bitcointop.club", "worldseed.bitcointop.club")
         self.signtype = 0x01
         self.signid = self.signtype
-        self.PUBKEY_ADDRESS = chr(0)
-        self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         self.txversion = 13
         self.BCDgarbage = "\xff" * 32
@@ -823,8 +813,6 @@ class BitCore(BitcoinFork):
         self.seeds = ("37.120.190.76", "37.120.186.85", "185.194.140.60", "188.71.223.206", "185.194.142.122")
         self.signtype = 0x01
         self.signid = self.signtype
-        self.PUBKEY_ADDRESS = chr(0)
-        self.SCRIPT_ADDRESS = chr(5)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         
 class BitcoinPay(BitcoinFork):
@@ -839,10 +827,56 @@ class BitcoinPay(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(5) # NOT CERTAIN
         self.coinratio = 10.0
 
+# https://github.com/btcking/btcking
+class BitcoinKing(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCK"
+        self.fullname = "Bitcoin King"
+        self.hardforkheight = 499999
+        self.magic = 0x161632af
+        self.port = 16333
+        self.seeds = ("47.52.28.49",)
+        self.signtype = 0x41
+        self.signid = self.signtype | (143 << 8)
+        
+# https://github.com/bitcoincandyofficial/bitcoincandy
+class BitcoinCandy(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "CDY"
+        self.fullname = "Bitcoin Candy"
+        self.hardforkheight = 512666
+        self.magic = 0xd9c4c3e3
+        self.port = 8367
+        self.seeds = ("seed.bitcoincandy.one", "seed.cdy.one")
+        self.signtype = 0x41
+        self.signid = self.signtype | (111 << 8)
+        self.PUBKEY_ADDRESS = chr(0x1c)
+        self.SCRIPT_ADDRESS = chr(0x58)
+        self.coinratio = 1000.0
+        self.bch_fork = True
+
+# https://github.com/BTSQ/BitcoinCommunity
+class BitcoinCommunity(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTSQ"
+        self.fullname = "Bitcoin Community"
+        self.hardforkheight = 506066
+        self.magic = 0xd9c4ceb9
+        self.port = 8866
+        self.seeds = ("dnsseed.aliyinke.com", "seed1.aliyinke.com", "seed2.aliyinke.com", "seed3.aliyinke.com")
+        self.signtype = 0x11
+        self.signid = self.signtype | (31 << 8)
+        self.PUBKEY_ADDRESS = chr(63)
+        self.SCRIPT_ADDRESS = chr(58)
+        self.coinratio = 1000.0
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -859,6 +893,8 @@ if args.cointicker == "B2X":
     coin = Bitcoin2X()
 elif args.cointicker == "BCD":
     coin = BitcoinDiamond()
+elif args.cointicker == "BCK":
+    coin = BitcoinKing()
 elif args.cointicker == "BCX":
     coin = BitcoinX()
 elif args.cointicker == "BPA":
@@ -873,6 +909,8 @@ elif args.cointicker == "BTN":
     coin = BitcoinNew()
 elif args.cointicker == "BTP":
     coin = BitcoinPay()
+elif args.cointicker == "BTSQ":
+    coin = BitcoinCommunity()
 elif args.cointicker == "BTT":
     coin = BitcoinTop()
 elif args.cointicker == "BTV":
@@ -881,6 +919,8 @@ elif args.cointicker == "BTW":
     coin = BitcoinWorld()
 elif args.cointicker == "BTX":
     coin = BitCore()
+elif args.cointicker == "CDY":
+    coin = BitcoinCandy()
 elif args.cointicker == "SBTC":
     coin = SuperBitcoin()
 elif args.cointicker == "UBTC":
@@ -905,6 +945,9 @@ elif keytype == "segwitbech32":
 else:
     raise Exception("Not implemented!")
 
+if coin.bch_fork and keytype not in ("p2pk", "standard"):
+    raise Exception("Segwit is not enabled for BCH and its forks!")
+
 if keytype in ("p2pk", "standard"):
     signscript = srcscript
 else:
@@ -915,6 +958,8 @@ if args.txindex is not None and args.satoshis is not None:
 else:
     if args.cointicker == "BTX":
         args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(args.srcaddr)
+    elif args.cointicker == "CDY":
+        raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
     else:
         txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
