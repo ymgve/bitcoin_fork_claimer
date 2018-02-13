@@ -311,6 +311,43 @@ def identify_keytype(wifkey, addr):
             
         raise Exception("Unable to identify key type!")
 
+def clear_screen():
+    _=os.system("cls")
+    _=os.system("clear")
+
+def prompt_wif(addr):
+    answer = raw_input("Please, enter private key of address %s in WIF (wallet import) format:" %addr)
+    return answer
+
+def get_txid(coin, args):
+    res = urllib2.urlopen("https://blockchain.info/address/%s?format=json" % args.srcaddr)
+    txinfo = json.loads(res.read())
+
+    total = 0
+    for tx in txinfo["txs"]:
+        if tx["block_height"] < coin.hardforkheight:
+            for incoming in tx["inputs"]:
+                if incoming["prev_out"]["addr"] == args.srcaddr:
+                    total -= incoming["prev_out"]["value"]
+            for out in tx["out"]:
+                if out["addr"] == args.srcaddr:
+                    total += out["value"]
+                    coinamount = total * coin.coinratio / 100000000.0
+                    if coinamount > 0:
+                        while True:
+                            args.txid =tx["hash"]
+                            print "Transaction: %s" %args.txid
+                            print "Ammount: %.8f %s" %(coinamount, coin.ticker)
+                            answer = raw_input("Wanna claim coins from this transaction? [y/N]")
+                            if answer in('y','Y'):
+                                clear_screen()
+                                args.wifkey = prompt_wif(args.srcaddr)
+                                restofprogram(coin, args)
+                            elif answer in('n','N', '') :
+                                break
+                            else:
+                                print "'%s' is not a valid answer, try again\n" %answer
+
 def get_tx_details_from_blockchaininfo(txid, addr, hardforkheight):
     print "Querying blockchain.info API about data for transaction %s" % txid
     res = urllib2.urlopen("https://blockchain.info/rawtx/%s" % txid)
@@ -510,7 +547,7 @@ class Client(object):
                     elif cmd == "block":
                         if tx in payload or plaintx in payload:
                             print "\tBLOCK WITH OUR TRANSACTION OBSERVED! YES!"
-                            print "\tYour coins have been successfully sent. Exiting..."
+                            print "\tYour coins have been successfully sent!"
                             return
                         else:
                             print "\tTransaction not included in observed block."
@@ -873,167 +910,196 @@ class BitcoinCommunity(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(58)
         self.coinratio = 1000.0
 
-assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
-parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ"])
-parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
-parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
-parser.add_argument("srcaddr", help="Source address of the coins")
-parser.add_argument("destaddr", help="Destination address of the coins")
-parser.add_argument("--fee", help="Fee measured in Satoshis, default is 1000", type=int, default=1000)
-parser.add_argument("--txindex", help="Manually specified txindex, skips blockchain.info API query", type=int)
-parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
-parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
-parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
+def get_coin(cointicker):
+    if cointicker == "B2X":
+        coin = Bitcoin2X()
+    elif cointicker == "BCD":
+        coin = BitcoinDiamond()
+    elif cointicker == "BCK":
+        coin = BitcoinKing()
+    elif cointicker == "BCX":
+        coin = BitcoinX()
+    elif cointicker == "BPA":
+        coin = BitcoinPizza()
+    elif cointicker == "BTF":
+        coin = BitcoinFaith()
+    elif cointicker == "BTG":
+        coin = BitcoinGold()
+    elif cointicker == "BTH":
+        coin = BitcoinHot()
+    elif cointicker == "BTN":
+        coin = BitcoinNew()
+    elif cointicker == "BTP":
+        coin = BitcoinPay()
+    elif cointicker == "BTSQ":
+        coin = BitcoinCommunity()
+    elif cointicker == "BTT":
+        coin = BitcoinTop()
+    elif cointicker == "BTV":
+        coin = BitcoinVote()
+    elif cointicker == "BTW":
+        coin = BitcoinWorld()
+    elif cointicker == "BTX":
+        coin = BitCore()
+    elif cointicker == "CDY":
+        coin = BitcoinCandy()
+    elif cointicker == "SBTC":
+        coin = SuperBitcoin()
+    elif cointicker == "UBTC":
+        coin = UnitedBitcoin()
+    return coin
 
-args = parser.parse_args()
+def restofprogram(coin, address, args):
 
-if args.cointicker == "B2X":
-    coin = Bitcoin2X()
-elif args.cointicker == "BCD":
-    coin = BitcoinDiamond()
-elif args.cointicker == "BCK":
-    coin = BitcoinKing()
-elif args.cointicker == "BCX":
-    coin = BitcoinX()
-elif args.cointicker == "BPA":
-    coin = BitcoinPizza()
-elif args.cointicker == "BTF":
-    coin = BitcoinFaith()
-elif args.cointicker == "BTG":
-    coin = BitcoinGold()
-elif args.cointicker == "BTH":
-    coin = BitcoinHot()
-elif args.cointicker == "BTN":
-    coin = BitcoinNew()
-elif args.cointicker == "BTP":
-    coin = BitcoinPay()
-elif args.cointicker == "BTSQ":
-    coin = BitcoinCommunity()
-elif args.cointicker == "BTT":
-    coin = BitcoinTop()
-elif args.cointicker == "BTV":
-    coin = BitcoinVote()
-elif args.cointicker == "BTW":
-    coin = BitcoinWorld()
-elif args.cointicker == "BTX":
-    coin = BitCore()
-elif args.cointicker == "CDY":
-    coin = BitcoinCandy()
-elif args.cointicker == "SBTC":
-    coin = SuperBitcoin()
-elif args.cointicker == "UBTC":
-    coin = UnitedBitcoin()
+    if args.height and coin.hardforkheight < args.height:
+        print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
+        print "(fork at height %d)" % coin.hardforkheight
+        exit()
+
+    keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, address)
+
+    if args.p2pk:
+        keytype = "p2pk"
+        srcscript = lengthprefixed(serializepubkey(pubkey, compressed)) + "\xac"
+    elif keytype == "standard":
+        srcscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
+    elif keytype == "segwit":
+        srcscript = "\xa9\x14" + hash160("\x00\x14" + sourceh160) + "\x87"
+    elif keytype == "segwitbech32":
+        srcscript = "\x00\x14" + sourceh160
+    else:
+        raise Exception("Not implemented!")
+
+    if coin.bch_fork and keytype not in ("p2pk", "standard"):
+        raise Exception("Segwit is not enabled for BCH and its forks!")
+
+    if keytype in ("p2pk", "standard"):
+        signscript = srcscript
+    else:
+        signscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
+
+    if args.txindex is not None and args.satoshis is not None:
+        txindex, satoshis = args.txindex, args.satoshis
+    else:
+        if args.cointicker == "BTX":
+            args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(address)
+        elif args.cointicker == "CDY":
+            raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
+        else:
+            txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, address, coin.hardforkheight)
+        
+        if bciscript != srcscript:
+            raise Exception("Script type in source output that is not supported!")
+
+    if args.destaddr.startswith("bc1"):
+        addr = bech32decode(args.destaddr)
+        assert len(addr) == 20
+        print "YOU ARE TRYING TO SEND TO A bech32 ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
+        get_consent("I am aware that the destination address is bech32")
+        outscript = "\x00\x14" + addr
+    else:
+        addr = b58decode(args.destaddr)
+        assert len(addr) == 21
+        if addr[0] == "\x00" or addr[0] == coin.PUBKEY_ADDRESS:
+            outscript = "\x76\xa9\x14" + addr[1:] + "\x88\xac"
+        elif addr[0] == "\x05" or addr[0] == coin.SCRIPT_ADDRESS:
+            print "YOU ARE TRYING TO SEND TO A P2SH ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
+            get_consent("I am aware that the destination address is P2SH")
+            outscript = "\xa9\x14" + addr[1:] + "\x87"
+        else:
+            raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
+
+    if keytype in ("p2pk", "standard", "segwit", "segwitbech32"):
+        tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, signscript, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype)
+        txhash = doublesha(plaintx)
+    else:
+        raise Exception("Not implemented!")
+        
+    print "Raw transaction"
+    print tx.encode("hex")
+    print
+
+    coinamount = (satoshis - args.fee) * coin.coinratio / 100000000.0
+    btcamount = (satoshis - args.fee) / 100000000.0
+    print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s TO %s!" % (coinamount, coin.ticker, btcamount, address, args.destaddr)
+    print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!"
+
+    # avoid bad RAM errors in destination address
+    if args.destaddr.startswith("bc1"):
+        idx = tx.index(addr[:10])
+        part2 = tx[idx+10:idx+20]
+        idx = tx.index(addr[10:20])
+        part1 = tx[idx-10:idx]
+        testaddr = bech32encode("bc", part1 + part2)
+    else:
+        idx = tx.index(addr[1:11])
+        part2 = tx[idx+10:idx+20]
+        idx = tx.index(addr[11:21])
+        part1 = tx[idx-10:idx]
+        testaddr = b58encode(addr[0] + part1 + part2)
+        
+    if args.destaddr != testaddr or outscript not in tx:
+        raise Exception("Corrupted destination address! Check your RAM!")
+
+    get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
+
+    print "generated transaction", txhash[::-1].encode("hex")
+    print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
+
+    if coin.ticker == "BTP":
+        data = '{"raw_tx": "%s"}' % tx.encode("hex")
+        res = urllib2.urlopen("https://bitpie.getcai.com/api/v1/btp/broadcast", data)
+        res = json.loads(res.read())
+        if res["result"] == 1:
+            print "Pushed transaction successfully!"
+            print "This does NOT mean the transaction will happen, just that the signature is valid."
+            print "All you can do now is wait."
+        else:
+            print "Server says transaction push failed!", repr(res)
+            print "Transaction might still have been accepted, wait for a few minutes to see if it arrives."
+        
+    else:
+        client = Client(coin)
+        client.send_tx(txhash, tx, args.fee)
+
+if __name__ == '__main__':
+
+    assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ"])
+    parser.add_argument("addrfile", help="File with list of addresses separated with a line break")
+    parser.add_argument("destaddr", help="Destination address of the coins")
+    parser.add_argument("--txid", help="Transaction ID with the source of the coins, dummy value for BTX", default=False)
+    parser.add_argument("--wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
+    parser.add_argument("--srcaddr", help="Source address of the coins")
+    parser.add_argument("--fee", help="Fee measured in Satoshis, default is 1000", type=int, default=1000)
+    parser.add_argument("--txindex", help="Manually specified txindex, skips blockchain.info API query", type=int)
+    parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
+    parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
+    parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
+
+    args = parser.parse_args()
+
+    coin = get_coin(args.cointicker)
+
+    if args.txid:
+        restofprogram(coin, args)
+    else:
+        addresses = [address.rstrip('\n') for address in open(args.addrfile)]
+
+        for address in addresses:
+            clear_screen()
+            args.srcaddr = address
+            print "Searching %s coins on addresses list\n" %coin.ticker
+            print "Address: %s" %address
+            get_txid(coin, args)
+            print "\n"
     
-if args.height and coin.hardforkheight < args.height:
-    print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
-    print "(fork at height %d)" % coin.hardforkheight
     exit()
 
-keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
-if args.p2pk:
-    keytype = "p2pk"
-    srcscript = lengthprefixed(serializepubkey(pubkey, compressed)) + "\xac"
-elif keytype == "standard":
-    srcscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
-elif keytype == "segwit":
-    srcscript = "\xa9\x14" + hash160("\x00\x14" + sourceh160) + "\x87"
-elif keytype == "segwitbech32":
-    srcscript = "\x00\x14" + sourceh160
-else:
-    raise Exception("Not implemented!")
+        
 
-if coin.bch_fork and keytype not in ("p2pk", "standard"):
-    raise Exception("Segwit is not enabled for BCH and its forks!")
-
-if keytype in ("p2pk", "standard"):
-    signscript = srcscript
-else:
-    signscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
-
-if args.txindex is not None and args.satoshis is not None:
-    txindex, satoshis = args.txindex, args.satoshis
-else:
-    if args.cointicker == "BTX":
-        args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(args.srcaddr)
-    elif args.cointicker == "CDY":
-        raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
-    else:
-        txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
-    
-    if bciscript != srcscript:
-        raise Exception("Script type in source output that is not supported!")
-
-if args.destaddr.startswith("bc1"):
-    addr = bech32decode(args.destaddr)
-    assert len(addr) == 20
-    print "YOU ARE TRYING TO SEND TO A bech32 ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
-    get_consent("I am aware that the destination address is bech32")
-    outscript = "\x00\x14" + addr
-else:
-    addr = b58decode(args.destaddr)
-    assert len(addr) == 21
-    if addr[0] == "\x00" or addr[0] == coin.PUBKEY_ADDRESS:
-        outscript = "\x76\xa9\x14" + addr[1:] + "\x88\xac"
-    elif addr[0] == "\x05" or addr[0] == coin.SCRIPT_ADDRESS:
-        print "YOU ARE TRYING TO SEND TO A P2SH ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
-        get_consent("I am aware that the destination address is P2SH")
-        outscript = "\xa9\x14" + addr[1:] + "\x87"
-    else:
-        raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
-
-if keytype in ("p2pk", "standard", "segwit", "segwitbech32"):
-    tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, signscript, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype)
-    txhash = doublesha(plaintx)
-else:
-    raise Exception("Not implemented!")
-    
-print "Raw transaction"
-print tx.encode("hex")
-print
-
-coinamount = (satoshis - args.fee) * coin.coinratio / 100000000.0
-btcamount = (satoshis - args.fee) / 100000000.0
-print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s TO %s!" % (coinamount, coin.ticker, btcamount, args.srcaddr, args.destaddr)
-print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!"
-
-# avoid bad RAM errors in destination address
-if args.destaddr.startswith("bc1"):
-    idx = tx.index(addr[:10])
-    part2 = tx[idx+10:idx+20]
-    idx = tx.index(addr[10:20])
-    part1 = tx[idx-10:idx]
-    testaddr = bech32encode("bc", part1 + part2)
-else:
-    idx = tx.index(addr[1:11])
-    part2 = tx[idx+10:idx+20]
-    idx = tx.index(addr[11:21])
-    part1 = tx[idx-10:idx]
-    testaddr = b58encode(addr[0] + part1 + part2)
-    
-if args.destaddr != testaddr or outscript not in tx:
-    raise Exception("Corrupted destination address! Check your RAM!")
-
-get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
-
-print "generated transaction", txhash[::-1].encode("hex")
-print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
-
-if coin.ticker == "BTP":
-    data = '{"raw_tx": "%s"}' % tx.encode("hex")
-    res = urllib2.urlopen("https://bitpie.getcai.com/api/v1/btp/broadcast", data)
-    res = json.loads(res.read())
-    if res["result"] == 1:
-        print "Pushed transaction successfully!"
-        print "This does NOT mean the transaction will happen, just that the signature is valid."
-        print "All you can do now is wait."
-    else:
-        print "Server says transaction push failed!", repr(res)
-        print "Transaction might still have been accepted, wait for a few minutes to see if it arrives."
-    
-else:
-    client = Client(coin)
-    client.send_tx(txhash, tx, args.fee)
 
