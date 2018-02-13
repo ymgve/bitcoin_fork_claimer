@@ -950,14 +950,14 @@ def get_coin(cointicker):
         coin = UnitedBitcoin()
     return coin
 
-def restofprogram(coin, address, args):
+def restofprogram(coin, args):
 
     if args.height and coin.hardforkheight < args.height:
         print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
         print "(fork at height %d)" % coin.hardforkheight
         exit()
 
-    keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, address)
+    keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
     if args.p2pk:
         keytype = "p2pk"
@@ -983,11 +983,11 @@ def restofprogram(coin, address, args):
         txindex, satoshis = args.txindex, args.satoshis
     else:
         if args.cointicker == "BTX":
-            args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(address)
+            args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(args.srcaddr)
         elif args.cointicker == "CDY":
             raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
         else:
-            txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, address, coin.hardforkheight)
+            txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
         
         if bciscript != srcscript:
             raise Exception("Script type in source output that is not supported!")
