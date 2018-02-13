@@ -18,7 +18,7 @@ def get_txs_list(addr, coin):
                         print "Block: %s" %tx["block_height"]
                         print "Transaction: %s" %tx["hash"]
                         print "Ammount: %.8f %s" %(coinamount, coin.ticker)
-                        print "Command: python2.7 claimer.py %s %s _PKEY_ %s _DEST_ADDR_" %(coin.ticker, tx["hash"], addr)
+                        print "Command: claimer.py %s %s _PKEY_ %s _DEST_ADDR_" %(coin.ticker, tx["hash"], addr)
     
 class BitcoinFork(object):
     def __init__(self):
