@@ -9,6 +9,7 @@ gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8L
 
 b58ab = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 bech32ab = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+client = 0
 
 def bech32_polymod(values):
     GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
@@ -1042,7 +1043,9 @@ def restofprogram(coin, args):
     if args.destaddr != testaddr or outscript not in tx:
         raise Exception("Corrupted destination address! Check your RAM!")
 
-    get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
+    print "I am sending coins on the %s network and I accept the risks" % coin.fullname
+
+    get_consent("yes")
 
     print "generated transaction", txhash[::-1].encode("hex")
     print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
@@ -1060,6 +1063,7 @@ def restofprogram(coin, args):
             print "Transaction might still have been accepted, wait for a few minutes to see if it arrives."
         
     else:
+        global client 
         client = Client(coin)
         client.send_tx(txhash, tx, args.fee)
 
