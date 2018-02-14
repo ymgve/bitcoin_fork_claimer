@@ -773,17 +773,18 @@ class BitcoinHot(BitcoinFork):
         self.versionno = 70016
         self.coinratio = 100.0
 
+# https://github.com/bitcoinvote/bitcoin
 class BitcoinVote(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
         self.ticker = "BTV"
         self.fullname = "Bitcoin Vote"
         self.hardforkheight = 505050
-        self.magic = 0xd9b4bef9
+        self.magic = 0x505050f9
         self.port = 8333
         self.seeds = ("seed1.bitvote.one", "seed2.bitvote.one", "seed3.bitvote.one")
-        self.signtype = 0x65
-        self.signid = self.signtype
+        self.signtype = 0x41
+        self.signid = self.signtype | (50 << 8)
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
 
 class BitcoinTop(BitcoinFork):
