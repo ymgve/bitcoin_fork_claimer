@@ -873,10 +873,41 @@ class BitcoinCommunity(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(58)
         self.coinratio = 1000.0
 
+# https://github.com/worldbitcoin/worldbitcoin
+class WorldBitcoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "WBTC"
+        self.fullname = "World Bitcoin"
+        self.hardforkheight = 503888
+        self.magic = 0xd9b4bef9
+        self.port = 8338
+        self.seeds = ("dnsseed.btcteams.net", "dnsseed.wbtcteam.org")
+        self.signtype = 0x41
+        self.signid = self.signtype
+        self.extrabytes = lengthprefixed("wbtc")
+        self.maketx = self.maketx_basicsig
+        self.coinratio = 100.0
+        
+# https://github.com/Bitcoin-ABC/bitcoin-abc
+class BitcoinCash(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCH"
+        self.fullname = "Bitcoin Cash"
+        self.hardforkheight = 478559
+        self.magic = 0xe8f3e1e3
+        self.port = 8333
+        self.seeds = ("seed.bitcoinabc.org", "seed-abc.bitcoinforks.org", "seed.bitprim.org", "seed.deadalnix.me", "seeder.criptolayer.net")
+        self.signtype = 0x41
+        self.signid = self.signtype
+        self.bch_fork = True
+
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -893,6 +924,8 @@ if args.cointicker == "B2X":
     coin = Bitcoin2X()
 elif args.cointicker == "BCD":
     coin = BitcoinDiamond()
+elif args.cointicker == "BCH":
+    coin = BitcoinCash()
 elif args.cointicker == "BCK":
     coin = BitcoinKing()
 elif args.cointicker == "BCX":
@@ -925,6 +958,8 @@ elif args.cointicker == "SBTC":
     coin = SuperBitcoin()
 elif args.cointicker == "UBTC":
     coin = UnitedBitcoin()
+elif args.cointicker == "WBTC":
+    coin = WorldBitcoin()
     
 if args.height and coin.hardforkheight < args.height:
     print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
