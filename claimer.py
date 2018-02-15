@@ -552,17 +552,24 @@ class BitcoinFork(object):
         self.SCRIPT_ADDRESS = chr(5)
         self.bch_fork = False
         
-    def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
+    def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype):
+        verifytotal = fee
+        
         version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
         inscript = lengthprefixed(signscript)
         satoshis = struct.pack("<Q", sourcesatoshis)
-        txout = struct.pack("<Q", sourcesatoshis - fee) + lengthprefixed(outscript)
+        
+        txouts = ""
+        for outscript, amount, destaddr, rawaddr in outputs:
+            txouts += struct.pack("<Q", amount) + lengthprefixed(outscript)
+            verifytotal += amount
+        
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
         
-        to_sign = version + self.BCDgarbage + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txout) + locktime + sigtype + self.extrabytes
+        to_sign = version + self.BCDgarbage + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txouts) + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -581,27 +588,37 @@ class BitcoinFork(object):
         else:
             raise Exception("Not implemented!")
             
-        plaintx = version + self.BCDgarbage + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
+        plaintx = version + self.BCDgarbage + make_varint(1) + prevout + script + sequence + make_varint(len(outputs)) + txouts + locktime
         
+        if verifytotal != sourcesatoshis:
+            raise Exception("Addition of output amounts does not match input amount (Bug?), aborting")
+            
         if keytype in ("p2pk", "standard"):
             return plaintx, plaintx
         else:
             witnesstx = version + self.BCDgarbage + "\x00\x01" + plaintx[4+len(self.BCDgarbage):-4] + "\x02" + sigblock + locktime
             return witnesstx, plaintx
         
-    def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype):
+    def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype):
         if keytype in ("segwit", "segwitbech32"):
-            return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outscript, fee, keytype)
+            return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype)
             
+        verifytotal = fee
+        
         version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
         inscript = lengthprefixed(signscript)
-        txout = struct.pack("<Q", sourcesatoshis - fee) + lengthprefixed(outscript)
+        
+        txouts = ""
+        for outscript, amount, destaddr, rawaddr in outputs:
+            txouts += struct.pack("<Q", amount) + lengthprefixed(outscript)
+            verifytotal += amount
+        
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
         
-        to_sign = version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(1) + txout + locktime + sigtype + self.extrabytes
+        to_sign = version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(len(outputs)) + txouts + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -611,7 +628,11 @@ class BitcoinFork(object):
         else:
             sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
         
-        plaintx = version + self.BCDgarbage + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(1) + txout + locktime
+        plaintx = version + self.BCDgarbage + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(len(outputs)) + txouts + locktime
+        
+        if verifytotal != sourcesatoshis:
+            raise Exception("Addition of output amounts does not match input amount (Bug?), aborting")
+            
         return plaintx, plaintx
         
 class BitcoinFaith(BitcoinFork):
@@ -1002,26 +1023,53 @@ else:
     if bciscript != srcscript:
         raise Exception("Script type in source output that is not supported!")
 
-if args.destaddr.startswith("bc1"):
-    addr = bech32decode(args.destaddr)
-    assert len(addr) == 20
-    print "YOU ARE TRYING TO SEND TO A bech32 ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
-    get_consent("I am aware that the destination address is bech32")
-    outscript = "\x00\x14" + addr
-else:
-    addr = b58decode(args.destaddr)
-    assert len(addr) == 21
-    if addr[0] == "\x00" or addr[0] == coin.PUBKEY_ADDRESS:
-        outscript = "\x76\xa9\x14" + addr[1:] + "\x88\xac"
-    elif addr[0] == "\x05" or addr[0] == coin.SCRIPT_ADDRESS:
-        print "YOU ARE TRYING TO SEND TO A P2SH ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
-        get_consent("I am aware that the destination address is P2SH")
-        outscript = "\xa9\x14" + addr[1:] + "\x87"
+remaining = satoshis - args.fee
+outputs = []
+for output in args.destaddr.split(","):
+    if ":" not in output:
+        destaddr, amount = output, None
     else:
-        raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (args.destaddr, coin.ticker))
+        destaddr, amount = output.split(":")
+        amount = int(amount)
+        if amount > remaining:
+            raise Exception("Specified satoshis amount exceeds remaining balance")
+        
+    if destaddr.startswith("bc1"):
+        rawaddr = bech32decode(destaddr)
+        assert len(rawaddr) == 20
+        print "YOU ARE TRYING TO SEND TO A bech32 ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
+        get_consent("I am aware that the destination address is bech32")
+        outscript = "\x00\x14" + rawaddr
+    else:
+        rawaddr = b58decode(destaddr)
+        assert len(rawaddr) == 21
+        if rawaddr[0] == "\x00" or rawaddr[0] == coin.PUBKEY_ADDRESS:
+            outscript = "\x76\xa9\x14" + rawaddr[1:] + "\x88\xac"
+        elif rawaddr[0] == "\x05" or rawaddr[0] == coin.SCRIPT_ADDRESS:
+            print "YOU ARE TRYING TO SEND TO A P2SH ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
+            get_consent("I am aware that the destination address is P2SH")
+            outscript = "\xa9\x14" + rawaddr[1:] + "\x87"
+        else:
+            raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (destaddr, coin.ticker))
+
+    outputs.append((outscript, amount, destaddr, rawaddr))
+    if amount is not None:
+        remaining -= amount
+
+for i in xrange(len(outputs)):
+    outscript, amount, destaddr, rawaddr = outputs[i]
+    if amount is None:
+        if remaining > 0:
+            outputs[i] = (outscript, remaining, destaddr, rawaddr)
+            remaining = 0
+        else:
+            raise Exception("Two outputs without specified amounts, can't continue")
+    
+if remaining != 0:
+    raise Exception("Addition of output amounts does not match input amount (Bug?), aborting")
 
 if keytype in ("p2pk", "standard", "segwit", "segwitbech32"):
-    tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, signscript, satoshis, privkey, pubkey, compressed, outscript, args.fee, keytype)
+    tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, signscript, satoshis, privkey, pubkey, compressed, outputs, args.fee, keytype)
     txhash = doublesha(plaintx)
 else:
     raise Exception("Not implemented!")
@@ -1030,27 +1078,36 @@ print "Raw transaction"
 print tx.encode("hex")
 print
 
-coinamount = (satoshis - args.fee) * coin.coinratio / 100000000.0
-btcamount = (satoshis - args.fee) / 100000000.0
-print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s TO %s!" % (coinamount, coin.ticker, btcamount, args.srcaddr, args.destaddr)
-print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!"
+coinamount = satoshis * coin.coinratio / 100000000.0
+btcamount = satoshis / 100000000.0
+print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s" % (coinamount, coin.ticker, btcamount, args.srcaddr)
+
+for outscript, amount, destaddr, rawaddr in outputs:
+    coinamount = amount * coin.coinratio / 100000000.0
+    btcamount = amount / 100000000.0
+    print "    %.8f %s (equivalent to %.8f BTC) TO %s" % (coinamount, coin.ticker, btcamount, destaddr)
+    
+coinamount = args.fee * coin.coinratio / 100000000.0
+btcamount = args.fee / 100000000.0
+print "!!! %.8f %s (equivalent to %.8f BTC) WILL BE SENT AS FEES! CONTINUE AT YOUR OWN RISK !!!" % (coinamount, coin.ticker, btcamount)
 
 # avoid bad RAM errors in destination address
-if args.destaddr.startswith("bc1"):
-    idx = tx.index(addr[:10])
-    part2 = tx[idx+10:idx+20]
-    idx = tx.index(addr[10:20])
-    part1 = tx[idx-10:idx]
-    testaddr = bech32encode("bc", part1 + part2)
-else:
-    idx = tx.index(addr[1:11])
-    part2 = tx[idx+10:idx+20]
-    idx = tx.index(addr[11:21])
-    part1 = tx[idx-10:idx]
-    testaddr = b58encode(addr[0] + part1 + part2)
-    
-if args.destaddr != testaddr or outscript not in tx:
-    raise Exception("Corrupted destination address! Check your RAM!")
+for outscript, amount, destaddr, rawaddr in outputs:
+    if destaddr.startswith("bc1"):
+        idx = tx.index(rawaddr[:10])
+        part2 = tx[idx+10:idx+20]
+        idx = tx.index(rawaddr[10:20])
+        part1 = tx[idx-10:idx]
+        testaddr = bech32encode("bc", part1 + part2)
+    else:
+        idx = tx.index(rawaddr[1:11])
+        part2 = tx[idx+10:idx+20]
+        idx = tx.index(rawaddr[11:21])
+        part1 = tx[idx-10:idx]
+        testaddr = b58encode(rawaddr[0] + part1 + part2)
+        
+    if destaddr != testaddr or outscript not in tx:
+        raise Exception("Corrupted destination address! Check your RAM!")
 
 get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
 

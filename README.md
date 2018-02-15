@@ -51,6 +51,24 @@ Standalone mode:
 
 Default fee is set to 1000 satoshis, but can be changed with the `--fee` option.
 
+You can specify multiple destination addresses in the destination address field, the format is:
+
+    <address>[,<address>][,<address>][,<address>]...
+    
+where `<address>` is either a plain address or an address plus an amount in satoshis, separated by a colon. Examples:
+
+    13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB
+    13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB:1000000
+    13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB:1000000,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE
+    13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB:1000000,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE:1000000
+    13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE:1000000
+    
+One of the destination addresses can be without a specified amount, which makes all the remaining coins (minus the fee) go to that address.
+
+Full example:
+
+    claimer.py BTG db4f2348b92b4cd34675df66b49855e66869d7e98eb97141e85b558c28390fb3 5K2YUVmWfxbmvsNxCsfvArXdGXm7d5DC9pn4yD75k2UaSYgkXTh 1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE 1aa5cmqmvQq8YQTEqcTmW7dfBNuFwgdCD 13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB:1000000,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE:1000000
+
 USAGE OF THIS SCRIPT IS RISKY AND IF YOU MISTYPE ANYTHING YOU CAN LOSE ALL YOUR COINS
 
 ---
