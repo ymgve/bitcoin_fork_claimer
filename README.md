@@ -43,7 +43,7 @@ blockchain.info mode:
 
     claimer.py <cointype> <source transaction ID> <source private key> <source address> <destination address>
     claimer.py BTG 4adc427d330497992710feaa32f85c389ef5106f74e7006878bd14b54500dfff 5K2YUVmWfxbmvsNxCsfvArXdGXm7d5DC9pn4yD75k2UaSYgkXTh 1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE 1aa5cmqmvQq8YQTEqcTmW7dfBNuFwgdCD
-    
+
 Standalone mode:
 
     claimer.py <cointype> <source transaction ID> <source private key> <source address> <destination address> --txindex <output index in transaction> --satoshis <number of satoshis on the source transaction output>
@@ -54,7 +54,7 @@ Default fee is set to 1000 satoshis, but can be changed with the `--fee` option.
 You can specify multiple destination addresses in the destination address field, the format is:
 
     <address>[,<address>][,<address>][,<address>]...
-    
+
 where `<address>` is either a plain address or an address plus an amount in satoshis, separated by a colon. Examples:
 
     13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB
@@ -62,7 +62,7 @@ where `<address>` is either a plain address or an address plus an amount in sato
     13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB:1000000,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE
     13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB:1000000,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE:1000000
     13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE:1000000
-    
+
 One of the destination addresses can be without a specified amount, which makes all the remaining coins (minus the fee) go to that address.
 
 Full example:
@@ -71,16 +71,22 @@ Full example:
 
 USAGE OF THIS SCRIPT IS RISKY AND IF YOU MISTYPE ANYTHING YOU CAN LOSE ALL YOUR COINS
 
+Advanced parameters for usage with scripting
+
+`--force` - Normally, the script creates the transaction and then requires the user to manually verify and enter a string to signal consent, before submitting the transaction to the network. When this flag is used, it skips this step and automatically submits it. Use only when you know what you are doing.
+
+`--noblock` - Without this flag, the script waits until the transaction is included in the next block. If you have a lot of addresses and use a script to process them, this can take a long time. When this flag is set, the script will finish after the transaction is included in the target network mempool. It's useful in combination with the `--force` parameter, because it allows mass processing of many addresses in an automated way.
+ 
 ---
 
 There is another python script for claiming FBTC (Fast Bitcoin). The FBTC network is based on the BitShares codebase, so it does not support Segwit. There are no TXIDs or change addresses,
 and you can transfer arbitrary amounts from an address multiple times.
 
 Usage:
-    
+
     fbtcclaimer.py <private key in WIF format> <public source address> <destination address> <number of satoshis to send, including fee>
     fbtcclaimer.py 5K2YUVmWfxbmvsNxCsfvArXdGXm7d5DC9pn4yD75k2UaSYgkXTh 1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE 1aa5cmqmvQq8YQTEqcTmW7dfBNuFwgdCD 3053
-    
+
 fbtcclaimer.py also requires aes.py to be in the same folder as the script. Thanks to https://github.com/ricmoo/pyaes for the implementation.
 
 ---
