@@ -701,11 +701,10 @@ class Bitcoin2X(BitcoinFork):
         self.hardforkheight = 501451
         self.magic = 0xd8b5b2f4
         self.port = 8333
-        self.seeds = ("node1.b2x-segwit.io", "node2.b2x-segwit.io", "node3.b2x-segwit.io", "136.243.147.159", "136.243.171.156", "46.229.165.141", "178.32.3.12")
-        self.signtype = 0x21
-        self.signid = self.signtype
+        self.seeds = ("node1.b2x-segwit.io", "node2.b2x-segwit.io", "node3.b2x-segwit.io")
+        self.signtype = 0x31
+        self.signid = self.signtype << 1
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
-        self.versionno = 70015 | (1 << 27)
 
 class UnitedBitcoin(BitcoinFork):
     def __init__(self):
