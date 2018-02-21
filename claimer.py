@@ -549,7 +549,7 @@ class Client(object):
                         if tx in payload or plaintx in payload:
                             print "\tBLOCK WITH OUR TRANSACTION OBSERVED! YES!"
                             print "\tYour coins have been successfully sent!"
-                            return
+                            break
                         else:
                             print "\tTransaction not included in observed block."
                             
@@ -618,6 +618,8 @@ class BitcoinFork(object):
             script = "\x00"
         else:
             raise Exception("Not implemented!")
+
+        global plaintx
             
         plaintx = version + self.BCDgarbage + make_varint(1) + prevout + script + sequence + make_varint(1) + txout + locktime
         
@@ -648,7 +650,7 @@ class BitcoinFork(object):
             sigblock = lengthprefixed(signature)
         else:
             sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
-        
+        global plaintx
         plaintx = version + self.BCDgarbage + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(1) + txout + locktime
         return plaintx, plaintx
         
