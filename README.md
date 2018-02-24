@@ -9,6 +9,7 @@ The following coins are recognized, although may not be fully tested:
 *  BCD - [Bitcoin Diamond](http://www.btcd.io/)
 *  BCH - [Bitcoin Cash](https://www.bitcoincash.org/)
 *  BCK - [Bitcoin King](https://btcking.org/) - NOT A TRUE FORK, NOT CLAIMABLE AT THE MOMENT
+*  BCP - [Bitcoin Cash Plus](http://www.bitcoincashplus.org/)
 *  BCX - [Bitcoin X](https://bcx.org/)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
 *  BTF - [Bitcoin Faith](http://bitcoinfaith.org/)
