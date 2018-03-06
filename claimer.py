@@ -295,7 +295,7 @@ def identify_keytype(wifkey, addr):
         
         raise Exception("Unable to identify key type!")
     else:
-        addrh160 = b58decode(addr)[1:]
+        addrh160 = b58decode(addr)[-20:]
         assert len(addrh160) == 20
 
         privkeytype, privkey, compressed = wif2privkey(args.wifkey)
@@ -551,6 +551,7 @@ class BitcoinFork(object):
         self.PUBKEY_ADDRESS = chr(0)
         self.SCRIPT_ADDRESS = chr(5)
         self.bch_fork = False
+        self.address_size = 21
         
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype):
         verifytotal = fee
@@ -924,11 +925,28 @@ class BitcoinCash(BitcoinFork):
         self.signid = self.signtype
         self.bch_fork = True
 
+# https://github.com/BTCPrivate/BitcoinPrivate
+class BitcoinPrivate(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTCP"
+        self.fullname = "Bitcoin Private"
+        self.hardforkheight = 511346
+        self.magic = 0xcda2eaa8
+        self.port = 7933
+        self.seeds = ("dnsseed.btcprivate.org",)
+        self.signtype = 0x41
+        self.signid = self.signtype | (42 << 8)
+        self.PUBKEY_ADDRESS = "\x13\x25"
+        self.SCRIPT_ADDRESS = "\x13\xaf"
+        self.address_size = 22
+        self.maketx = self.maketx_basicsig
+        self.versionno = 180003
 
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -953,6 +971,8 @@ elif args.cointicker == "BCX":
     coin = BitcoinX()
 elif args.cointicker == "BPA":
     coin = BitcoinPizza()
+elif args.cointicker == "BTCP":
+    coin = BitcoinPrivate()
 elif args.cointicker == "BTF":
     coin = BitcoinFaith()
 elif args.cointicker == "BTG":
@@ -1016,6 +1036,8 @@ else:
         args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(args.srcaddr)
     elif args.cointicker == "CDY":
         raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
+    elif args.cointicker == "BTCP":
+        raise Exception("Bitcoin Private is not a true fork and therefore does not work with blockchain.info mode. Please use https://explorer.btcprivate.org and specify txindex and satoshis manually.")
     else:
         txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
@@ -1041,13 +1063,13 @@ for output in args.destaddr.split(","):
         outscript = "\x00\x14" + rawaddr
     else:
         rawaddr = b58decode(destaddr)
-        assert len(rawaddr) == 21
-        if rawaddr[0] == "\x00" or rawaddr[0] == coin.PUBKEY_ADDRESS:
-            outscript = "\x76\xa9\x14" + rawaddr[1:] + "\x88\xac"
-        elif rawaddr[0] == "\x05" or rawaddr[0] == coin.SCRIPT_ADDRESS:
+        assert len(rawaddr) in (21, coin.address_size)
+        if rawaddr[0] == "\x00" or rawaddr.startswith(coin.PUBKEY_ADDRESS):
+            outscript = "\x76\xa9\x14" + rawaddr[-20:] + "\x88\xac"
+        elif rawaddr[0] == "\x05" or rawaddr.startswith(coin.SCRIPT_ADDRESS):
             print "YOU ARE TRYING TO SEND TO A P2SH ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
             get_consent("I am aware that the destination address is P2SH")
-            outscript = "\xa9\x14" + rawaddr[1:] + "\x87"
+            outscript = "\xa9\x14" + rawaddr[-20:] + "\x87"
         else:
             raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (destaddr, coin.ticker))
 
@@ -1099,11 +1121,11 @@ for outscript, amount, destaddr, rawaddr in outputs:
         part1 = tx[idx-10:idx]
         testaddr = bech32encode("bc", part1 + part2)
     else:
-        idx = tx.index(rawaddr[1:11])
+        idx = tx.index(rawaddr[-20:-10])
         part2 = tx[idx+10:idx+20]
-        idx = tx.index(rawaddr[11:21])
+        idx = tx.index(rawaddr[-10:])
         part1 = tx[idx-10:idx]
-        testaddr = b58encode(rawaddr[0] + part1 + part2)
+        testaddr = b58encode(rawaddr[:-20] + part1 + part2)
         
     if destaddr != testaddr or outscript not in tx:
         raise Exception("Corrupted destination address! Check your RAM!")
