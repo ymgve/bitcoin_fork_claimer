@@ -6,11 +6,13 @@ Requires Python 2.7
 The following coins are recognized, although may not be fully tested:
 
 *  B2X - [Segwit 2X](https://b2x-segwit.io/)
+*  BCA - [Bitcoin Atom](https://bitcoinatom.io/)
 *  BCD - [Bitcoin Diamond](http://www.btcd.io/)
 *  BCH - [Bitcoin Cash](https://www.bitcoincash.org/)
 *  BCK - [Bitcoin King](https://btcking.org/) - NOT A TRUE FORK, NOT CLAIMABLE AT THE MOMENT
 *  BCX - [Bitcoin X](https://bcx.org/)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
+*  BTCP - [Bitcoin Private](https://btcprivate.org/)
 *  BTF - [Bitcoin Faith](http://bitcoinfaith.org/)
 *  BTG - [Bitcoin Gold](https://bitcoingold.org/)
 *  BTH - [Bitcoin Hot](https://www.bithot.org/)
@@ -22,6 +24,7 @@ The following coins are recognized, although may not be fully tested:
 *  BTW - [Bitcoin World](http://www.btw.one/)
 *  BTX - [Bitcore](https://bitcore.cc/)
 *  CDY - [Bitcoin Candy](https://cdy.one/) - Forked from Bitcoin Cash, not Bitcoin
+*  LBTC - [Lightning Bitcoin](http://lbtc.io/)
 *  SBTC - [Super Bitcoin](http://superbtc.org/)
 *  UBTC - [United Bitcoin](https://www.ub.com/)
 *  WBTC - [World Bitcoin](http://www.wbtcteam.org/)

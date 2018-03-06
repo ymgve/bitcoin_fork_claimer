@@ -497,8 +497,7 @@ print "!!!EVERYTHING ELSE WILL BE EATEN UP AS FEES! CONTINUE AT YOUR OWN RISK!!!
 
 get_consent("I am sending coins on the Fast Bitcoin network and I accept the risks")
 
-#seed_nodes = ("47.74.233.132", "47.74.232.61", "47.88.222.217", "47.72.233.73", "47.74.230.248")
-seed_nodes = ("185.12.237.78", "109.201.142.34")
+seed_nodes = ("47.74.233.132", "47.74.232.61", "47.88.222.217", "47.72.233.73", "47.74.230.248")
 
 tcp = STCP()
 tcp.connect((random.choice(seed_nodes), 40032))
