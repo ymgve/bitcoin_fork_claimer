@@ -943,10 +943,42 @@ class BitcoinPrivate(BitcoinFork):
         self.maketx = self.maketx_basicsig
         self.versionno = 180003
 
+# https://github.com/bitcoin-atom/bitcoin-atom
+class BitcoinAtom(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCA"
+        self.fullname = "Bitcoin Atom"
+        self.hardforkheight = 505888
+        self.magic = 0xe81dc14f
+        self.port = 7333
+        self.seeds = ("seed.bitcoinatom.io", "seed.bitcoin-atom.org", "seed.bitcoinatom.net")
+        self.signtype = 0x41
+        self.signid = self.signtype | (93 << 8)
+        self.PUBKEY_ADDRESS = chr(23)
+        self.SCRIPT_ADDRESS = chr(10)
+
+# no source code yet - shame!
+class LightningBitcoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "LBTC"
+        self.fullname = "Lightning Bitcoin"
+        self.hardforkheight = 499999
+        self.magic = 0xd7b4bef9
+        self.port = 9333
+        self.seeds = ("seed1.lbtc.io", "seed2.lbtc.io", "seed3.lbtc.io", "seed4.lbtc.io", "seed5.lbtc.io", "seed6.lbtc.io")
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.txversion = 0xff01
+        self.maketx = self.maketx_basicsig
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -961,6 +993,8 @@ args = parser.parse_args()
 
 if args.cointicker == "B2X":
     coin = Bitcoin2X()
+elif args.cointicker == "BCA":
+    coin = BitcoinAtom()
 elif args.cointicker == "BCD":
     coin = BitcoinDiamond()
 elif args.cointicker == "BCH":
@@ -995,6 +1029,8 @@ elif args.cointicker == "BTX":
     coin = BitCore()
 elif args.cointicker == "CDY":
     coin = BitcoinCandy()
+elif args.cointicker == "LBTC":
+    coin = LightningBitcoin()
 elif args.cointicker == "SBTC":
     coin = SuperBitcoin()
 elif args.cointicker == "UBTC":
