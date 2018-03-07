@@ -975,10 +975,26 @@ class LightningBitcoin(BitcoinFork):
         self.txversion = 0xff01
         self.maketx = self.maketx_basicsig
 
+# https://github.com/bitunity/BitClassicCoin-BICC
+class BitcoinClassicCoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BICC"
+        self.fullname = "BitClassic Coin"
+        self.hardforkheight = 499888
+        self.magic = 0xd9b4bef9
+        self.port = 8666
+        self.seeds = ("47.104.59.46", "47.104.59.9")
+        self.signtype = 0x11
+        self.signid = self.signtype
+        self.maketx = self.maketx_basicsig
+        self.versionno = 731800
+        self.extrabytes = lengthprefixed("111")
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1003,6 +1019,8 @@ elif args.cointicker == "BCK":
     coin = BitcoinKing()
 elif args.cointicker == "BCX":
     coin = BitcoinX()
+elif args.cointicker == "BICC":
+    coin = BitcoinClassicCoin()
 elif args.cointicker == "BPA":
     coin = BitcoinPizza()
 elif args.cointicker == "BTCP":
