@@ -991,10 +991,25 @@ class BitcoinClassicCoin(BitcoinFork):
         self.versionno = 731800
         self.extrabytes = lengthprefixed("111")
 
+# https://github.com/BitcoinInterestOfficial/BitcoinInterest
+class BitcoinInterest(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCI"
+        self.fullname = "Bitcoin Interest"
+        self.hardforkheight = 505083
+        self.magic = 0x26fee4ed
+        self.port = 8331
+        self.seeds = ("seeder1.bci-server.com", "seeder2.bci-server.com", "seeder3.bci-server.com", "74.208.166.57", "216.250.117.221")
+        self.signtype = 0x41
+        self.signid = self.signtype | (79 << 8)
+        self.PUBKEY_ADDRESS = chr(102)
+        self.SCRIPT_ADDRESS = chr(23)
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1015,6 +1030,8 @@ elif args.cointicker == "BCD":
     coin = BitcoinDiamond()
 elif args.cointicker == "BCH":
     coin = BitcoinCash()
+elif args.cointicker == "BCI":
+    coin = BitcoinInterest()
 elif args.cointicker == "BCK":
     coin = BitcoinKing()
 elif args.cointicker == "BCX":
@@ -1099,6 +1116,12 @@ else:
         raise Exception("Script type in source output that is not supported!")
 
 remaining = satoshis - args.fee
+if remaining <= 0:
+    print "The specified amount of satoshis specified is smaller than or equal to the fee."
+    print "Note that the '--satoshis' parameter needs to be the TOTAL amount available in the source transaction."
+    print "If you want a custom fee, use '--fee'."
+    raise Exception("No coins remaining to place in outputs")
+    
 outputs = []
 for output in args.destaddr.split(","):
     if ":" not in output:
