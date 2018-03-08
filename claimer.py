@@ -981,7 +981,7 @@ class BitcoinClassicCoin(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "BICC"
         self.fullname = "BitClassic Coin"
-        self.hardforkheight = 499888
+        self.hardforkheight = 498888
         self.magic = 0xd9b4bef9
         self.port = 8666
         self.seeds = ("47.104.59.46", "47.104.59.9")
