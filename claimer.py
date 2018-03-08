@@ -489,7 +489,11 @@ class Client(object):
                                 blocks_to_get.append(invhash)
                         if transaction_found and not self._transaction_accepted:        
                             print "\n\tOUR TRANSACTION IS IN THEIR MEMPOOL, TRANSACTION ACCEPTED! YAY!"
-                            print "\tConsider leaving this script running until it detects the transaction in a block."
+                            if args.noblock:
+                            # User specified --noblock, we are done here
+                                return
+                            else:
+                                print "\tConsider leaving this script running until it detects the transaction in a block."
                             self._transaction_accepted = True
                         elif transaction_found:
                             print "\tTransaction still in mempool. Continue waiting for block inclusion."
@@ -1019,6 +1023,8 @@ parser.add_argument("--txindex", help="Manually specified txindex, skips blockch
 parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
 parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
 parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
+parser.add_argument("--force", help="Do not require consent, submit transaction directly", action="store_true")
+parser.add_argument("--noblock", help="Do not wait for block confirmation, finish after the transaction is in mempool", action="store_true")
 
 args = parser.parse_args()
 
@@ -1207,7 +1213,8 @@ for outscript, amount, destaddr, rawaddr in outputs:
     if destaddr != testaddr or outscript not in tx:
         raise Exception("Corrupted destination address! Check your RAM!")
 
-get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
+if not args.force:
+    get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
 
 print "generated transaction", txhash[::-1].encode("hex")
 print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
