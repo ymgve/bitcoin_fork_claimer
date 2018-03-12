@@ -1,3 +1,5 @@
+!!! UPDATE TO THE LATEST VERSION IF YOU WANT TO CLAIM WBTC - MAJOR BUG FIXED !!!
+
 This is a small script that enables you to transfer/claim various coins in Bitcoin forks
 without downloading the full blockchains or messing with the official clients.
 

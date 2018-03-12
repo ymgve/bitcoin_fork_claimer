@@ -1032,7 +1032,7 @@ parser.add_argument("--txindex", help="Manually specified txindex, skips blockch
 parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
 parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
 parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
-parser.add_argument("--wbtcbug", help="Workaround for WBTC bug when claiming from Segwit addresses", action="store_true")
+parser.add_argument("--no_wtc_conv", help="Disable 100:1 up-conversion of WBTC (In practice you should never need this)", action="store_true")
 
 args = parser.parse_args()
 
@@ -1129,8 +1129,8 @@ else:
     if bciscript != srcscript:
         raise Exception("Script type in source output that is not supported!")
 
-# WBTC devs messed up their implementation of the 100:1 fork ratio - gotta multiply by 100 here to claim segwit coins that existed pre-fork
-if args.cointicker == "WBTC" and args.wbtcbug:
+# I misunderstood the WBTC dev implementation of 100:1 fork ratio - gotta multiply by 100 here to claim all coins that existed pre-fork
+if args.cointicker == "WBTC" and not args.no_wtc_conv:
     satoshis *= 100
     
 remaining = satoshis - args.fee
