@@ -413,7 +413,7 @@ class Client(object):
                 address = (coin.seeds[serverindex], self.coin.port)
                 print "Connecting to", address, "...",
                 self.sc = socket.create_connection(address, 10)
-                print "SUCCESS!"
+                print "SUCCESS, connected to", self.sc.getpeername()
                 self.sc.settimeout(120)
                 
                 services = 0
@@ -428,6 +428,20 @@ class Client(object):
                     cmd, payload = client.recv_msg()
                     print "<--- '%s' (%d bytes)" % (cmd, len(payload))
                     if cmd == "version":
+                        sio = cStringIO.StringIO(payload)
+                        protoversion, services, timestamp = struct.unpack("<IQQ", sio.read(20))
+                        addr_recv = sio.read(26)
+                        addr_from = sio.read(26)
+                        nonce = sio.read(8)
+                        user_agent_len = read_varint(sio)
+                        user_agent = sio.read(user_agent_len)
+                        start_height = struct.unpack("<I", sio.read(4))[0]
+                        print "     Version information:"
+                        print "\tprotocol version", protoversion
+                        print "\tservices", services
+                        print "\ttimestamp", time.asctime(time.gmtime(timestamp))
+                        print "\tuser agent", repr(user_agent)
+                        print "\tblock height", repr(start_height)
                         client.send("verack", "")
                         
                     elif cmd == "sendheaders":
@@ -913,7 +927,6 @@ class WorldBitcoin(BitcoinFork):
         self.signid = self.signtype
         self.extrabytes = lengthprefixed("wbtc")
         self.maketx = self.maketx_basicsig
-        self.coinratio = 100.0
         
 # https://github.com/Bitcoin-ABC/bitcoin-abc
 class BitcoinCash(BitcoinFork):
@@ -985,7 +998,7 @@ class BitcoinClassicCoin(BitcoinFork):
         BitcoinFork.__init__(self)
         self.ticker = "BICC"
         self.fullname = "BitClassic Coin"
-        self.hardforkheight = 499888
+        self.hardforkheight = 498888
         self.magic = 0xd9b4bef9
         self.port = 8666
         self.seeds = ("47.104.59.46", "47.104.59.9")
@@ -1025,6 +1038,7 @@ parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY 
 parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
 parser.add_argument("--force", help="Do not require consent, submit transaction directly", action="store_true")
 parser.add_argument("--noblock", help="Do not wait for block confirmation, finish after the transaction is in mempool", action="store_true")
+parser.add_argument("--no_wtc_conv", help="Disable 100:1 up-conversion of WBTC (In practice you should never need this)", action="store_true")
 
 args = parser.parse_args()
 
@@ -1121,6 +1135,10 @@ else:
     if bciscript != srcscript:
         raise Exception("Script type in source output that is not supported!")
 
+# I misunderstood the WBTC dev implementation of 100:1 fork ratio - gotta multiply by 100 here to claim all coins that existed pre-fork
+if args.cointicker == "WBTC" and not args.no_wtc_conv:
+    satoshis *= 100
+    
 remaining = satoshis - args.fee
 if remaining <= 0:
     print "The specified amount of satoshis specified is smaller than or equal to the fee."
