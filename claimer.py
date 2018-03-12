@@ -1231,6 +1231,11 @@ print "generated transaction", txhash[::-1].encode("hex")
 print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
 
 if coin.ticker == "BTP":
+    print "Bitcoin Pay does not have a public mainnet and the script therefore uses the Bitpie API."
+    print "Recently, it seems like Bitpie have disabled the broadcast functionality of their AIP."
+    print "The only option for BTP is using Bitpie/Bither at the moment.\n"
+    get_consent("I will try anyway")
+    
     data = '{"raw_tx": "%s"}' % tx.encode("hex")
     res = urllib2.urlopen("https://bitpie.getcai.com/api/v1/btp/broadcast", data)
     res = json.loads(res.read())
