@@ -980,7 +980,7 @@ class LightningBitcoin(BitcoinFork):
         self.hardforkheight = 499999
         self.magic = 0xd7b4bef9
         self.port = 9333
-        self.seeds = ("seed1.lbtc.io", "seed2.lbtc.io", "seed3.lbtc.io", "seed4.lbtc.io", "seed5.lbtc.io", "seed6.lbtc.io")
+        self.seeds = ("seed7.lbtc.io", "seed8.lbtc.io", "seed9.lbtc.io", "seed10.lbtc.io")
         self.signtype = 0x01
         self.signid = self.signtype
         self.PUBKEY_ADDRESS = chr(0)
