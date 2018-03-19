@@ -1231,21 +1231,24 @@ print "generated transaction", txhash[::-1].encode("hex")
 print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
 
 if coin.ticker == "BTP":
-    print "Bitcoin Pay does not have a public mainnet and the script therefore uses the Bitpie API."
-    print "Recently, it seems like Bitpie have disabled the broadcast functionality of their AIP."
-    print "The only option for BTP is using Bitpie/Bither at the moment.\n"
-    get_consent("I will try anyway")
-    
-    data = '{"raw_tx": "%s"}' % tx.encode("hex")
-    res = urllib2.urlopen("https://bitpie.getcai.com/api/v1/btp/broadcast", data)
-    res = json.loads(res.read())
-    if res["result"] == 1:
-        print "Pushed transaction successfully!"
-        print "This does NOT mean the transaction will happen, just that the signature is valid."
-        print "All you can do now is wait."
-    else:
-        print "Server says transaction push failed!", repr(res)
-        print "Transaction might still have been accepted, wait for a few minutes to see if it arrives."
+    data = '{"rawtx": "%s"}\r\n' % tx.encode("hex")
+    opener = urllib2.build_opener()
+    req = urllib2.Request("http://exp.btceasypay.com/insight-api/tx/send", data=data, headers={"Content-Type": "application/json"})
+    try:
+        res = opener.open(req)
+        data = res.read()
+        print "received data", repr(data)
+        data = json.loads(data)
+        if data["txid"] == txhash[::-1].encode("hex"):
+            print "Pushed transaction successfully!"
+            print "This does NOT mean the transaction will happen, just that the signature is valid."
+            print "All you can do now is wait."
+        else:
+            print "Server says transaction push failed!", repr(data)
+            print "Transaction might still have been accepted, wait for a few minutes to see if it arrives."
+    except urllib2.HTTPError, e:
+        print "API gave error", e
+        print repr(e.read())
     
 else:
     client = Client(coin)
