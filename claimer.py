@@ -295,7 +295,7 @@ def identify_keytype(wifkey, addr):
         
         raise Exception("Unable to identify key type!")
     else:
-        addrh160 = b58decode(addr)[1:]
+        addrh160 = b58decode(addr)[-20:]
         assert len(addrh160) == 20
 
         privkeytype, privkey, compressed = wif2privkey(args.wifkey)
@@ -413,7 +413,7 @@ class Client(object):
                 address = (coin.seeds[serverindex], self.coin.port)
                 print "Connecting to", address, "...",
                 self.sc = socket.create_connection(address, 10)
-                print "SUCCESS!"
+                print "SUCCESS, connected to", self.sc.getpeername()
                 self.sc.settimeout(120)
                 
                 services = 0
@@ -428,6 +428,20 @@ class Client(object):
                     cmd, payload = client.recv_msg()
                     print "<--- '%s' (%d bytes)" % (cmd, len(payload))
                     if cmd == "version":
+                        sio = cStringIO.StringIO(payload)
+                        protoversion, services, timestamp = struct.unpack("<IQQ", sio.read(20))
+                        addr_recv = sio.read(26)
+                        addr_from = sio.read(26)
+                        nonce = sio.read(8)
+                        user_agent_len = read_varint(sio)
+                        user_agent = sio.read(user_agent_len)
+                        start_height = struct.unpack("<I", sio.read(4))[0]
+                        print "     Version information:"
+                        print "\tprotocol version", protoversion
+                        print "\tservices", services
+                        print "\ttimestamp", time.asctime(time.gmtime(timestamp))
+                        print "\tuser agent", repr(user_agent)
+                        print "\tblock height", repr(start_height)
                         client.send("verack", "")
                         
                     elif cmd == "sendheaders":
@@ -551,6 +565,7 @@ class BitcoinFork(object):
         self.PUBKEY_ADDRESS = chr(0)
         self.SCRIPT_ADDRESS = chr(5)
         self.bch_fork = False
+        self.address_size = 21
         
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype):
         verifytotal = fee
@@ -908,7 +923,6 @@ class WorldBitcoin(BitcoinFork):
         self.signid = self.signtype
         self.extrabytes = lengthprefixed("wbtc")
         self.maketx = self.maketx_basicsig
-        self.coinratio = 100.0
 
 # https://github.com/bitcoincashplus/bitcoincashplus
 class BitcoinCashPlus(BitcoinFork):
@@ -939,11 +953,91 @@ class BitcoinCash(BitcoinFork):
         self.signid = self.signtype
         self.bch_fork = True
 
+# https://github.com/BTCPrivate/BitcoinPrivate
+class BitcoinPrivate(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTCP"
+        self.fullname = "Bitcoin Private"
+        self.hardforkheight = 511346
+        self.magic = 0xcda2eaa8
+        self.port = 7933
+        self.seeds = ("dnsseed.btcprivate.org",)
+        self.signtype = 0x41
+        self.signid = self.signtype | (42 << 8)
+        self.PUBKEY_ADDRESS = "\x13\x25"
+        self.SCRIPT_ADDRESS = "\x13\xaf"
+        self.address_size = 22
+        self.maketx = self.maketx_basicsig
+        self.versionno = 180003
+
+# https://github.com/bitcoin-atom/bitcoin-atom
+class BitcoinAtom(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCA"
+        self.fullname = "Bitcoin Atom"
+        self.hardforkheight = 505888
+        self.magic = 0xe81dc14f
+        self.port = 7333
+        self.seeds = ("seed.bitcoinatom.io", "seed.bitcoin-atom.org", "seed.bitcoinatom.net")
+        self.signtype = 0x41
+        self.signid = self.signtype | (93 << 8)
+        self.PUBKEY_ADDRESS = chr(23)
+        self.SCRIPT_ADDRESS = chr(10)
+
+# no source code yet - shame!
+class LightningBitcoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "LBTC"
+        self.fullname = "Lightning Bitcoin"
+        self.hardforkheight = 499999
+        self.magic = 0xd7b4bef9
+        self.port = 9333
+        self.seeds = ("seed7.lbtc.io", "seed8.lbtc.io", "seed9.lbtc.io", "seed10.lbtc.io")
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.PUBKEY_ADDRESS = chr(0)
+        self.SCRIPT_ADDRESS = chr(5)
+        self.txversion = 0xff01
+        self.maketx = self.maketx_basicsig
+
+# https://github.com/bitunity/BitClassicCoin-BICC
+class BitcoinClassicCoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BICC"
+        self.fullname = "BitClassic Coin"
+        self.hardforkheight = 498888
+        self.magic = 0xd9b4bef9
+        self.port = 8666
+        self.seeds = ("47.104.59.46", "47.104.59.9")
+        self.signtype = 0x11
+        self.signid = self.signtype
+        self.maketx = self.maketx_basicsig
+        self.versionno = 731800
+        self.extrabytes = lengthprefixed("111")
+
+# https://github.com/BitcoinInterestOfficial/BitcoinInterest
+class BitcoinInterest(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCI"
+        self.fullname = "Bitcoin Interest"
+        self.hardforkheight = 505083
+        self.magic = 0x26fee4ed
+        self.port = 8331
+        self.seeds = ("seeder1.bci-server.com", "seeder2.bci-server.com", "seeder3.bci-server.com", "74.208.166.57", "216.250.117.221")
+        self.signtype = 0x41
+        self.signid = self.signtype | (79 << 8)
+        self.PUBKEY_ADDRESS = chr(102)
+        self.SCRIPT_ADDRESS = chr(23)
 
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BCP", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -953,23 +1047,32 @@ parser.add_argument("--txindex", help="Manually specified txindex, skips blockch
 parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
 parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
 parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
+parser.add_argument("--no_wtc_conv", help="Disable 100:1 up-conversion of WBTC (In practice you should never need this)", action="store_true")
 
 args = parser.parse_args()
 
 if args.cointicker == "B2X":
     coin = Bitcoin2X()
+elif args.cointicker == "BCA":
+    coin = BitcoinAtom()
 elif args.cointicker == "BCD":
     coin = BitcoinDiamond()
 elif args.cointicker == "BCH":
     coin = BitcoinCash()
+elif args.cointicker == "BCI":
+    coin = BitcoinInterest()
 elif args.cointicker == "BCK":
     coin = BitcoinKing()
 elif args.cointicker == "BCP":
     coin = BitcoinCashPlus()
 elif args.cointicker == "BCX":
     coin = BitcoinX()
+elif args.cointicker == "BICC":
+    coin = BitcoinClassicCoin()
 elif args.cointicker == "BPA":
     coin = BitcoinPizza()
+elif args.cointicker == "BTCP":
+    coin = BitcoinPrivate()
 elif args.cointicker == "BTF":
     coin = BitcoinFaith()
 elif args.cointicker == "BTG":
@@ -992,6 +1095,8 @@ elif args.cointicker == "BTX":
     coin = BitCore()
 elif args.cointicker == "CDY":
     coin = BitcoinCandy()
+elif args.cointicker == "LBTC":
+    coin = LightningBitcoin()
 elif args.cointicker == "SBTC":
     coin = SuperBitcoin()
 elif args.cointicker == "UBTC":
@@ -1033,13 +1138,25 @@ else:
         args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(args.srcaddr)
     elif args.cointicker == "CDY":
         raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
+    elif args.cointicker == "BTCP":
+        raise Exception("Bitcoin Private is not a true fork and therefore does not work with blockchain.info mode. Please use https://explorer.btcprivate.org and specify txindex and satoshis manually.")
     else:
         txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
     if bciscript != srcscript:
         raise Exception("Script type in source output that is not supported!")
 
+# I misunderstood the WBTC dev implementation of 100:1 fork ratio - gotta multiply by 100 here to claim all coins that existed pre-fork
+if args.cointicker == "WBTC" and not args.no_wtc_conv:
+    satoshis *= 100
+    
 remaining = satoshis - args.fee
+if remaining <= 0:
+    print "The specified amount of satoshis specified is smaller than or equal to the fee."
+    print "Note that the '--satoshis' parameter needs to be the TOTAL amount available in the source transaction."
+    print "If you want a custom fee, use '--fee'."
+    raise Exception("No coins remaining to place in outputs")
+    
 outputs = []
 for output in args.destaddr.split(","):
     if ":" not in output:
@@ -1058,13 +1175,13 @@ for output in args.destaddr.split(","):
         outscript = "\x00\x14" + rawaddr
     else:
         rawaddr = b58decode(destaddr)
-        assert len(rawaddr) == 21
-        if rawaddr[0] == "\x00" or rawaddr[0] == coin.PUBKEY_ADDRESS:
-            outscript = "\x76\xa9\x14" + rawaddr[1:] + "\x88\xac"
-        elif rawaddr[0] == "\x05" or rawaddr[0] == coin.SCRIPT_ADDRESS:
+        assert len(rawaddr) in (21, coin.address_size)
+        if rawaddr[0] == "\x00" or rawaddr.startswith(coin.PUBKEY_ADDRESS):
+            outscript = "\x76\xa9\x14" + rawaddr[-20:] + "\x88\xac"
+        elif rawaddr[0] == "\x05" or rawaddr.startswith(coin.SCRIPT_ADDRESS):
             print "YOU ARE TRYING TO SEND TO A P2SH ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
             get_consent("I am aware that the destination address is P2SH")
-            outscript = "\xa9\x14" + rawaddr[1:] + "\x87"
+            outscript = "\xa9\x14" + rawaddr[-20:] + "\x87"
         else:
             raise Exception("The destination address %s does not match BTC or %s. Are you sure you got the right one?" % (destaddr, coin.ticker))
 
@@ -1116,11 +1233,11 @@ for outscript, amount, destaddr, rawaddr in outputs:
         part1 = tx[idx-10:idx]
         testaddr = bech32encode("bc", part1 + part2)
     else:
-        idx = tx.index(rawaddr[1:11])
+        idx = tx.index(rawaddr[-20:-10])
         part2 = tx[idx+10:idx+20]
-        idx = tx.index(rawaddr[11:21])
+        idx = tx.index(rawaddr[-10:])
         part1 = tx[idx-10:idx]
-        testaddr = b58encode(rawaddr[0] + part1 + part2)
+        testaddr = b58encode(rawaddr[:-20] + part1 + part2)
         
     if destaddr != testaddr or outscript not in tx:
         raise Exception("Corrupted destination address! Check your RAM!")
@@ -1131,16 +1248,24 @@ print "generated transaction", txhash[::-1].encode("hex")
 print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
 
 if coin.ticker == "BTP":
-    data = '{"raw_tx": "%s"}' % tx.encode("hex")
-    res = urllib2.urlopen("https://bitpie.getcai.com/api/v1/btp/broadcast", data)
-    res = json.loads(res.read())
-    if res["result"] == 1:
-        print "Pushed transaction successfully!"
-        print "This does NOT mean the transaction will happen, just that the signature is valid."
-        print "All you can do now is wait."
-    else:
-        print "Server says transaction push failed!", repr(res)
-        print "Transaction might still have been accepted, wait for a few minutes to see if it arrives."
+    data = '{"rawtx": "%s"}\r\n' % tx.encode("hex")
+    opener = urllib2.build_opener()
+    req = urllib2.Request("http://exp.btceasypay.com/insight-api/tx/send", data=data, headers={"Content-Type": "application/json"})
+    try:
+        res = opener.open(req)
+        data = res.read()
+        print "received data", repr(data)
+        data = json.loads(data)
+        if data["txid"] == txhash[::-1].encode("hex"):
+            print "Pushed transaction successfully!"
+            print "This does NOT mean the transaction will happen, just that the signature is valid."
+            print "All you can do now is wait."
+        else:
+            print "Server says transaction push failed!", repr(data)
+            print "Transaction might still have been accepted, wait for a few minutes to see if it arrives."
+    except urllib2.HTTPError, e:
+        print "API gave error", e
+        print repr(e.read())
     
 else:
     client = Client(coin)

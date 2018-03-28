@@ -1,3 +1,5 @@
+!!! UPDATE TO THE LATEST VERSION IF YOU WANT TO CLAIM WBTC - MAJOR BUG FIXED !!!
+
 This is a small script that enables you to transfer/claim various coins in Bitcoin forks
 without downloading the full blockchains or messing with the official clients.
 
@@ -6,12 +8,16 @@ Requires Python 2.7
 The following coins are recognized, although may not be fully tested:
 
 *  B2X - [Segwit 2X](https://b2x-segwit.io/)
+*  BCA - [Bitcoin Atom](https://bitcoinatom.io/)
 *  BCD - [Bitcoin Diamond](http://www.btcd.io/)
 *  BCH - [Bitcoin Cash](https://www.bitcoincash.org/)
+*  BCI - [Bitcoin Interest](http://bitcoininterest.io/)
 *  BCK - [Bitcoin King](https://btcking.org/) - NOT A TRUE FORK, NOT CLAIMABLE AT THE MOMENT
 *  BCP - [Bitcoin Cash Plus](http://www.bitcoincashplus.org/)
 *  BCX - [Bitcoin X](https://bcx.org/)
+*  BICC - [BitClassic Coin](http://bicc.io/)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
+*  BTCP - [Bitcoin Private](https://btcprivate.org/)
 *  BTF - [Bitcoin Faith](http://bitcoinfaith.org/)
 *  BTG - [Bitcoin Gold](https://bitcoingold.org/)
 *  BTH - [Bitcoin Hot](https://www.bithot.org/)
@@ -23,13 +29,14 @@ The following coins are recognized, although may not be fully tested:
 *  BTW - [Bitcoin World](http://www.btw.one/)
 *  BTX - [Bitcore](https://bitcore.cc/)
 *  CDY - [Bitcoin Candy](https://cdy.one/) - Forked from Bitcoin Cash, not Bitcoin
+*  LBTC - [Lightning Bitcoin](http://lbtc.io/)
 *  SBTC - [Super Bitcoin](http://superbtc.org/)
 *  UBTC - [United Bitcoin](https://www.ub.com/)
 *  WBTC - [World Bitcoin](http://www.wbtcteam.org/)
 
-At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC
+At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI
 
-It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT, BTP, BTSQ, WBTC networks so far.
+It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI networks so far.
 
 It should support old-style Pay-2-Public-Key that were in use in 2009-2010 (use command line switch --p2pk) but this is UNTESTED at the moment.
 
