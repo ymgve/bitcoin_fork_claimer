@@ -13,6 +13,7 @@ The following coins are recognized, although may not be fully tested:
 *  BCH - [Bitcoin Cash](https://www.bitcoincash.org/)
 *  BCI - [Bitcoin Interest](http://bitcoininterest.io/)
 *  BCK - [Bitcoin King](https://btcking.org/) - NOT A TRUE FORK, NOT CLAIMABLE AT THE MOMENT
+*  BCP - [Bitcoin Cash Plus](http://www.bitcoincashplus.org/)
 *  BCX - [Bitcoin X](https://bcx.org/)
 *  BICC - [BitClassic Coin](http://bicc.io/)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
