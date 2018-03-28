@@ -55,15 +55,42 @@ def long2byte(n, sz=None):
         res = res.rjust(sz, "\x00")
         
     return res
-    
+
+cointypes = {
+        "BTF":  (chr(36), chr(40)),
+        "BTW":  (chr(73), chr(31)),
+        "BTG":  (chr(38), chr(23)),
+        "BCX":  (chr(75), chr(63)),
+        "BPA":  (chr(55), chr(80)),
+        "BTH":  (chr(40), chr(5)),
+        "BTP":  (chr(0x38), chr(5)),
+        "CDY":  (chr(0x1c), chr(0x58)),
+        "BTSQ": (chr(63), chr(58)),
+        "BTCP": ("\x13\x25", "\x13\xaf"),
+        "BCA":  (chr(23), chr(10)),
+        "BCI":  (chr(102), chr(23))
+    }
+
 if len(sys.argv) != 3:
     print "Small converter script that converts base58 addresses from one kind to another."
+    print
+    print "Usage: convert_address.py <address to convert> <ticker symbol of coin>"
+    print "Example: convert_address.py 1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE BTCP"
     print
     print "Usage: convert_address.py <address to convert> <random address of another kind>"
     print "Example: convert_address.py 1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE XSmfx3pzAtVm4ujeBwyUenX9p5GbHwZF6s"
 else:
-    identifier = b58decode(sys.argv[2])[:-20]
-    srcraw = b58decode(sys.argv[1])[-20:]
+    if len(sys.argv[2]) <= 4:
+        srctype = b58decode(sys.argv[1])[:-20]
+        srcraw = b58decode(sys.argv[1])[-20:]
+        if srctype == "\x05":
+            identifier = cointypes[sys.argv[2]][1]
+        else:
+            identifier = cointypes[sys.argv[2]][0]
+    else:
+        identifier = b58decode(sys.argv[2])[:-20]
+        srcraw = b58decode(sys.argv[1])[-20:]
+        
     print b58encode(identifier + srcraw)
     
     

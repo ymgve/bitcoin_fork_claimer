@@ -9,6 +9,7 @@ The following coins are recognized, although may not be fully tested:
 
 *  B2X - [Segwit 2X](https://b2x-segwit.io/)
 *  BCA - [Bitcoin Atom](https://bitcoinatom.io/)
+*  BCBC - [Bitcoin@CBC](https://cleanblockchain.org/)
 *  BCD - [Bitcoin Diamond](http://www.btcd.io/)
 *  BCH - [Bitcoin Cash](https://www.bitcoincash.org/)
 *  BCI - [Bitcoin Interest](http://bitcoininterest.io/)

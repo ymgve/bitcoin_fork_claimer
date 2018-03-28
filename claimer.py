@@ -938,6 +938,7 @@ class BitcoinCashPlus(BitcoinFork):
         self.signid = self.signtype
         self.PUBKEY_ADDRESS = chr(28)
         self.SCRIPT_ADDRESS = chr(23)
+        self.bch_fork = True
 
 # https://github.com/Bitcoin-ABC/bitcoin-abc
 class BitcoinCash(BitcoinFork):
@@ -1034,10 +1035,22 @@ class BitcoinInterest(BitcoinFork):
         self.PUBKEY_ADDRESS = chr(102)
         self.SCRIPT_ADDRESS = chr(23)
 
+# https://github.com/cleanblockchain/Bitcoin-CBC
+class BitcoinCBC(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCBC"
+        self.fullname = "Bitcoin@CBC"
+        self.hardforkheight = 498754
+        self.magic = 0xd9b4bef9
+        self.port = 8341
+        self.seeds = ("btcseed.cleanblockchain.io", "btcseed.cleanblockchain.org")
+        self.maketx = self.maketx_basicsig
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1055,6 +1068,8 @@ if args.cointicker == "B2X":
     coin = Bitcoin2X()
 elif args.cointicker == "BCA":
     coin = BitcoinAtom()
+elif args.cointicker == "BCBC":
+    coin = BitcoinCBC()
 elif args.cointicker == "BCD":
     coin = BitcoinDiamond()
 elif args.cointicker == "BCH":
@@ -1140,6 +1155,8 @@ else:
         raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
     elif args.cointicker == "BTCP":
         raise Exception("Bitcoin Private is not a true fork and therefore does not work with blockchain.info mode. Please use https://explorer.btcprivate.org and specify txindex and satoshis manually.")
+    elif args.cointicker == "BCBC":
+        raise Exception("Bitcoin@CBC is not a true fork and therefore does not work with blockchain.info mode. Please use http://be.cleanblockchain.org and specify txindex and satoshis manually.")
     else:
         txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
