@@ -994,7 +994,7 @@ class LightningBitcoin(BitcoinFork):
         self.ticker = "LBTC"
         self.fullname = "Lightning Bitcoin"
         self.hardforkheight = 499999
-        self.magic = 0xd7b4bef9
+        self.magic = 0xd7b3bef9
         self.port = 9333
         self.seeds = ("seed7.lbtc.io", "seed8.lbtc.io", "seed9.lbtc.io", "seed10.lbtc.io")
         self.signtype = 0x01
