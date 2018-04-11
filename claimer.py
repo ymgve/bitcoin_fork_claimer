@@ -361,6 +361,51 @@ def get_btx_details_from_chainz_cryptoid(addr):
     
     return txid, txindex, script, satoshis
 
+def get_coin_details_from_electrum(coin, targettxid, sourceh160):
+    addr = b58encode(coin.PUBKEY_ADDRESS + sourceh160)
+    sc = socket.create_connection((coin.electrum_server, coin.electrum_port))
+    sc.send('{ "id": 0, "method": "blockchain.address.listunspent", "params": [ "%s" ] }\n' % addr)
+    res = readline(sc)
+        
+    j = json.loads(res)
+    unspents = j["result"]
+    if len(unspents) == 0:
+        raise Exception("No %s at this address!" % coin.ticker)
+    
+    # if len(unspents) = 1:
+        # target = unspents[0]
+    # else:
+    target = None
+    for tx in unspents:
+        if tx["tx_hash"] == targettxid:
+            target = tx
+            break
+            
+    if target is None:
+        print "Multiple potential outputs possible - please use one of these TXIDs to claim"
+        for tx in unspents:
+            coinamount = int(tx["value"]) * coin.coinratio / 100000000.0
+            btcamount = int(tx["value"]) / 100000000.0
+            print "    TXID %s : %20.8f %s (equivalent to %.8f BTC)" % (tx["tx_hash"], coinamount, coin.ticker, btcamount)
+            
+        exit()
+
+    
+    return target["tx_hash"], int(target["tx_pos"]), None, int(target["value"])
+
+def readline(sc):
+    res = ""
+    while True:
+        c = sc.recv(1)
+        if c == "":
+            raise Exception("Disconnect when querying electrum server")
+        elif c == "\n":
+            break
+        else:
+            res += c
+    
+    return res
+
 def get_consent(consentstring):
     print "\nWrite '%s' to continue" % consentstring
 
@@ -1047,11 +1092,32 @@ class BitcoinCBC(BitcoinFork):
         self.seeds = ("btcseed.cleanblockchain.io", "btcseed.cleanblockchain.org")
         self.maketx = self.maketx_basicsig
 
+# BTCH is a Komodo (source code at https://github.com/SuperNETorg/komodo) "alternate" blockchain
+# Komodo alternate chains basically just use a different network magic and TCP port, calculated from the ticker name and coin amount
+
+# We use the BTCH Electrum server to get details and submit transactions, so most of these parameters aren't used (but they are correct)
+# Server details from https://github.com/SuperNETorg/Agama/blob/master/routes/electrumjs/electrumServers.js
+class BitcoinHush(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTCH"
+        self.fullname = "Bitcoin Hush"
+        self.hardforkheight = 507089
+        self.magic = 0xff5e1cf4 # calculated from ticker name and supply: hex(zlib.crc32(struct.pack("<Q", 20998641) + "BTCH") & 0xffffffff)
+        self.port = 8799 # calculated from magic: 0xff5e1cf4 % 7777 + 8000
+        self.seeds = ("seeds.komodoplatform.com", "seeds.komodo.mewhub.com")
+        self.maketx = self.maketx_basicsig
+        self.versionno = 170002
+        self.PUBKEY_ADDRESS = chr(60)
+        self.SCRIPT_ADDRESS = chr(85)
+        self.electrum_server = "electrum1.cipig.net"
+        self.electrum_port = 10020
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC"])
-parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX")
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH"])
+parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
 parser.add_argument("destaddr", help="Destination address of the coins")
@@ -1086,6 +1152,8 @@ elif args.cointicker == "BICC":
     coin = BitcoinClassicCoin()
 elif args.cointicker == "BPA":
     coin = BitcoinPizza()
+elif args.cointicker == "BTCH":
+    coin = BitcoinHush()
 elif args.cointicker == "BTCP":
     coin = BitcoinPrivate()
 elif args.cointicker == "BTF":
@@ -1151,6 +1219,8 @@ if args.txindex is not None and args.satoshis is not None:
 else:
     if args.cointicker == "BTX":
         args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(args.srcaddr)
+    elif args.cointicker == "BTCH":
+        args.txid, txindex, bciscript, satoshis = get_coin_details_from_electrum(coin, args.txid, sourceh160)
     elif args.cointicker == "CDY":
         raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
     elif args.cointicker == "BTCP":
@@ -1160,7 +1230,7 @@ else:
     else:
         txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
-    if bciscript != srcscript:
+    if bciscript is not None and bciscript != srcscript:
         raise Exception("Script type in source output that is not supported!")
 
 # I misunderstood the WBTC dev implementation of 100:1 fork ratio - gotta multiply by 100 here to claim all coins that existed pre-fork
@@ -1283,6 +1353,19 @@ if coin.ticker == "BTP":
     except urllib2.HTTPError, e:
         print "API gave error", e
         print repr(e.read())
+        
+elif coin.ticker == "BTCH":
+    sc = socket.create_connection((coin.electrum_server, coin.electrum_port))
+    sc.send('{ "id": 1, "method": "blockchain.transaction.broadcast", "params": [ "%s" ] }\n' % tx.encode("hex"))
+    
+    res = readline(sc)
+    j = json.loads(res)
+    try:
+        assert j["result"] == txhash[::-1].encode("hex")
+        print "Success - server accepted transaction and responded with TXID %s" % j["result"]
+    except:
+        print "ERROR when submitting transaction!"
+        print "Raw server response: " % repr(res)
     
 else:
     client = Client(coin)
