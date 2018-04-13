@@ -1,4 +1,4 @@
-import hashlib, os, struct, sys, socket, time, urllib2, json, argparse, cStringIO, traceback, hmac
+import hashlib, os, struct, sys, socket, time, urllib2, json, argparse, cStringIO, traceback, hmac, ssl
 
 N = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fL
 R = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141L
@@ -361,9 +361,15 @@ def get_btx_details_from_chainz_cryptoid(addr):
     
     return txid, txindex, script, satoshis
 
-def get_coin_details_from_electrum(coin, targettxid, sourceh160):
-    addr = b58encode(coin.PUBKEY_ADDRESS + sourceh160)
+def get_coin_details_from_electrum(coin, targettxid, sourceh160, keytype):
+    if keytype in ("segwit", "segwit_btcp"):
+        addr = b58encode(coin.SCRIPT_ADDRESS + hash160("\x00\x14" + sourceh160))
+    else:
+        addr = b58encode(coin.PUBKEY_ADDRESS + sourceh160)
+
     sc = socket.create_connection((coin.electrum_server, coin.electrum_port))
+    if coin.electrum_ssl:
+        sc = ssl.wrap_socket(sc)
     sc.send('{ "id": 0, "method": "blockchain.address.listunspent", "params": [ "%s" ] }\n' % addr)
     res = readline(sc)
         
@@ -372,23 +378,23 @@ def get_coin_details_from_electrum(coin, targettxid, sourceh160):
     if len(unspents) == 0:
         raise Exception("No %s at this address!" % coin.ticker)
     
-    # if len(unspents) = 1:
-        # target = unspents[0]
-    # else:
-    target = None
-    for tx in unspents:
-        if tx["tx_hash"] == targettxid:
-            target = tx
-            break
-            
-    if target is None:
-        print "Multiple potential outputs possible - please use one of these TXIDs to claim"
+    if len(unspents) == 1:
+        target = unspents[0]
+    else:
+        target = None
         for tx in unspents:
-            coinamount = int(tx["value"]) * coin.coinratio / 100000000.0
-            btcamount = int(tx["value"]) / 100000000.0
-            print "    TXID %s : %20.8f %s (equivalent to %.8f BTC)" % (tx["tx_hash"], coinamount, coin.ticker, btcamount)
-            
-        exit()
+            if tx["tx_hash"] == targettxid:
+                target = tx
+                break
+                
+        if target is None:
+            print "Multiple potential outputs possible - please use one of these TXIDs to claim"
+            for tx in unspents:
+                coinamount = int(tx["value"]) * coin.coinratio / 100000000.0
+                btcamount = int(tx["value"]) / 100000000.0
+                print "    TXID %s : %20.8f %s (equivalent to %.8f BTC)" % (tx["tx_hash"], coinamount, coin.ticker, btcamount)
+                
+            exit()
 
     
     return target["tx_hash"], int(target["tx_pos"]), None, int(target["value"])
@@ -611,6 +617,7 @@ class BitcoinFork(object):
         self.SCRIPT_ADDRESS = chr(5)
         self.bch_fork = False
         self.address_size = 21
+        self.electrum_server = None
         
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype):
         verifytotal = fee
@@ -687,6 +694,9 @@ class BitcoinFork(object):
             sigblock = lengthprefixed(signature)
         else:
             sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
+            
+        if keytype == "segwit_btcp":
+            sigblock += lengthprefixed("\x00\x14" + sourceh160)
         
         plaintx = version + self.BCDgarbage + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(len(outputs)) + txouts + locktime
         
@@ -1008,7 +1018,8 @@ class BitcoinPrivate(BitcoinFork):
         self.hardforkheight = 511346
         self.magic = 0xcda2eaa8
         self.port = 7933
-        self.seeds = ("dnsseed.btcprivate.org",)
+        # removed dnsseed.btcprivate.org until more clients have upgraded to version 1.0.11 which supports segwit
+        self.seeds = ("157.52.27.131", "35.192.186.138", "35.229.218.234")
         self.signtype = 0x41
         self.signid = self.signtype | (42 << 8)
         self.PUBKEY_ADDRESS = "\x13\x25"
@@ -1016,6 +1027,10 @@ class BitcoinPrivate(BitcoinFork):
         self.address_size = 22
         self.maketx = self.maketx_basicsig
         self.versionno = 180003
+        self.electrum_server = "electrum.btcprivate.org"
+        self.electrum_port = 5222
+        self.electrum_ssl = True
+        self.electrum_pushtx = False
 
 # https://github.com/bitcoin-atom/bitcoin-atom
 class BitcoinAtom(BitcoinFork):
@@ -1112,6 +1127,8 @@ class BitcoinHush(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(85)
         self.electrum_server = "electrum1.cipig.net"
         self.electrum_port = 10020
+        self.electrum_ssl = False
+        self.electrum_pushtx = True
 
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
@@ -1194,10 +1211,13 @@ if args.height and coin.hardforkheight < args.height:
 
 keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
 
+if keytype == "segwit" and args.cointicker == "BTCP":
+    keytype = "segwit_btcp"
+    
 if args.p2pk:
     keytype = "p2pk"
     srcscript = lengthprefixed(serializepubkey(pubkey, compressed)) + "\xac"
-elif keytype == "standard":
+elif keytype in ("standard", "segwit_btcp"):
     srcscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
 elif keytype == "segwit":
     srcscript = "\xa9\x14" + hash160("\x00\x14" + sourceh160) + "\x87"
@@ -1209,7 +1229,7 @@ else:
 if coin.bch_fork and keytype not in ("p2pk", "standard"):
     raise Exception("Segwit is not enabled for BCH and its forks!")
 
-if keytype in ("p2pk", "standard"):
+if keytype == "p2pk":
     signscript = srcscript
 else:
     signscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
@@ -1219,12 +1239,10 @@ if args.txindex is not None and args.satoshis is not None:
 else:
     if args.cointicker == "BTX":
         args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(args.srcaddr)
-    elif args.cointicker == "BTCH":
-        args.txid, txindex, bciscript, satoshis = get_coin_details_from_electrum(coin, args.txid, sourceh160)
+    elif coin.electrum_server:
+        args.txid, txindex, bciscript, satoshis = get_coin_details_from_electrum(coin, args.txid, sourceh160, keytype)
     elif args.cointicker == "CDY":
         raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
-    elif args.cointicker == "BTCP":
-        raise Exception("Bitcoin Private is not a true fork and therefore does not work with blockchain.info mode. Please use https://explorer.btcprivate.org and specify txindex and satoshis manually.")
     elif args.cointicker == "BCBC":
         raise Exception("Bitcoin@CBC is not a true fork and therefore does not work with blockchain.info mode. Please use http://be.cleanblockchain.org and specify txindex and satoshis manually.")
     else:
@@ -1288,7 +1306,7 @@ for i in xrange(len(outputs)):
 if remaining != 0:
     raise Exception("Addition of output amounts does not match input amount (Bug?), aborting")
 
-if keytype in ("p2pk", "standard", "segwit", "segwitbech32"):
+if keytype in ("p2pk", "standard", "segwit", "segwit_btcp", "segwitbech32"):
     tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, signscript, satoshis, privkey, pubkey, compressed, outputs, args.fee, keytype)
     txhash = doublesha(plaintx)
 else:
@@ -1354,8 +1372,10 @@ if coin.ticker == "BTP":
         print "API gave error", e
         print repr(e.read())
         
-elif coin.ticker == "BTCH":
+elif coin.electrum_server and coin.electrum_pushtx:
     sc = socket.create_connection((coin.electrum_server, coin.electrum_port))
+    if coin.electrum_ssl:
+        sc = ssl.wrap_socket(sc)
     sc.send('{ "id": 1, "method": "blockchain.transaction.broadcast", "params": [ "%s" ] }\n' % tx.encode("hex"))
     
     res = readline(sc)

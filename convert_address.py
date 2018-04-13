@@ -57,6 +57,7 @@ def long2byte(n, sz=None):
     return res
 
 cointypes = {
+        "BTC":  (chr(0), chr(5)),
         "BTF":  (chr(36), chr(40)),
         "BTW":  (chr(73), chr(31)),
         "BTG":  (chr(38), chr(23)),
