@@ -81,6 +81,12 @@ Full example:
 
 USAGE OF THIS SCRIPT IS RISKY AND IF YOU MISTYPE ANYTHING YOU CAN LOSE ALL YOUR COINS
 
+Advanced parameters for usage with scripting
+
+`--force` - Normally, the script creates the transaction and then requires the user to manually verify and enter a string to signal consent, before submitting the transaction to the network. When this flag is used, it skips this step and automatically submits it. Use only when you know what you are doing.
+
+`--noblock` - Without this flag, the script waits until the transaction is included in the next block. If you have a lot of addresses and use a script to process them, this can take a long time. When this flag is set, the script will finish after the transaction is included in the target network mempool. It's useful in combination with the `--force` parameter, because it allows mass processing of many addresses in an automated way.
+
 ---
 
 There is another python script for claiming FBTC (Fast Bitcoin). The FBTC network is based on the BitShares codebase, so it does not support Segwit. There are no TXIDs or change addresses,
