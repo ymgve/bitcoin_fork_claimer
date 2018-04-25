@@ -1134,10 +1134,26 @@ class BitcoinHush(BitcoinFork):
         self.electrum_ssl = False
         self.electrum_pushtx = True
 
+# https://github.com/BitcoinGod/BitcoinGod
+class BitcoinGod(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "GOD"
+        self.fullname = "Bitcoin God"
+        self.hardforkheight = 501226
+        self.magic = 0xd9b4bef9
+        self.port = 8885
+        self.seeds = ["s.bitcoingod.org"]
+        self.maketx = self.maketx_basicsig
+        self.signtype = 0x01 | 0x08
+        self.signid = self.signtype | (107 << 8)
+        self.PUBKEY_ADDRESS = chr(97)
+        self.SCRIPT_ADDRESS = chr(23)
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1209,7 +1225,8 @@ elif args.cointicker == "UBTC":
     coin = UnitedBitcoin()
 elif args.cointicker == "WBTC":
     coin = WorldBitcoin()
-    
+elif args.cointicker == "GOD":
+    coin = BitcoinGod()
 if args.height and coin.hardforkheight < args.height:
     print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
     print "(fork at height %d)" % coin.hardforkheight
