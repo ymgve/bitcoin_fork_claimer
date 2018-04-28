@@ -58,6 +58,8 @@ def long2byte(n, sz=None):
 
 cointypes = {
         "BTC":  (chr(0), chr(5)),
+        "BBC":  (chr(0x19), chr(0x55)),
+        "BTCH": (chr(60), chr(85)),
         "BTF":  (chr(36), chr(40)),
         "BTW":  (chr(73), chr(31)),
         "BTG":  (chr(38), chr(23)),
@@ -69,7 +71,8 @@ cointypes = {
         "BTSQ": (chr(63), chr(58)),
         "BTCP": ("\x13\x25", "\x13\xaf"),
         "BCA":  (chr(23), chr(10)),
-        "BCI":  (chr(102), chr(23))
+        "BCI":  (chr(102), chr(23)),
+        "GOD":  (chr(97), chr(23)),
     }
 
 if len(sys.argv) != 3:

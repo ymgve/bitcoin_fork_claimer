@@ -1143,17 +1143,45 @@ class BitcoinGod(BitcoinFork):
         self.hardforkheight = 501226
         self.magic = 0xd9b4bef9
         self.port = 8885
-        self.seeds = ["s.bitcoingod.org"]
+        self.seeds = ("s.bitcoingod.org",)
         self.maketx = self.maketx_basicsig
         self.signtype = 0x01 | 0x08
         self.signid = self.signtype | (107 << 8)
         self.PUBKEY_ADDRESS = chr(97)
         self.SCRIPT_ADDRESS = chr(23)
 
+class BigBitcoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BBC"
+        self.fullname = "Big Bitcoin"
+        self.hardforkheight = 508888
+        self.magic = 0xc3c2c2fe
+        self.port = 8366
+        self.seeds = ("seed.bigbitcoins.org",)
+        self.signtype = 0x41
+        self.signid = self.signtype | (66 << 8)
+        self.PUBKEY_ADDRESS = chr(0x19)
+        self.SCRIPT_ADDRESS = chr(0x55)
+        self.coinratio = 10.0
+
+class NewBitcoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "NBTC"
+        self.fullname = "NewBitcoin"
+        self.hardforkheight = 501225
+        self.magic = 0xd8b4bef9
+        self.port = 18880
+        self.seeds = ("1.newbitcoin.org", "2.newbitcoin.org", "3.newbitcoin.org", "4.newbitcoin.org", "1.manghao.com", "2.manghao.com", "3.manghao.com", "4.manghao.com")
+        self.signtype = 0x41
+        self.signid = self.signtype | (78 << 8)
+        self.coinratio = 2.0
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1171,6 +1199,8 @@ args = parser.parse_args()
 
 if args.cointicker == "B2X":
     coin = Bitcoin2X()
+elif args.cointicker == "BBC":
+    coin = BigBitcoin()
 elif args.cointicker == "BCA":
     coin = BitcoinAtom()
 elif args.cointicker == "BCBC":
@@ -1217,16 +1247,19 @@ elif args.cointicker == "BTX":
     coin = BitCore()
 elif args.cointicker == "CDY":
     coin = BitcoinCandy()
+elif args.cointicker == "GOD":
+    coin = BitcoinGod()
 elif args.cointicker == "LBTC":
     coin = LightningBitcoin()
+elif args.cointicker == "NBTC":
+    coin = NewBitcoin()
 elif args.cointicker == "SBTC":
     coin = SuperBitcoin()
 elif args.cointicker == "UBTC":
     coin = UnitedBitcoin()
 elif args.cointicker == "WBTC":
     coin = WorldBitcoin()
-elif args.cointicker == "GOD":
-    coin = BitcoinGod()
+    
 if args.height and coin.hardforkheight < args.height:
     print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
     print "(fork at height %d)" % coin.hardforkheight
