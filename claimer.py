@@ -1178,10 +1178,26 @@ class NewBitcoin(BitcoinFork):
         self.signid = self.signtype | (78 << 8)
         self.coinratio = 2.0
 
+# https://github.com/bitcoinclean/bitcoinclean
+# Their code uses a "salt" as fork protection, but seems bugged at the moment, and haven't seen any examples of it being used in their blockchain so far
+# "Luckily" they accept plain non-forkID transactions (Yes, this also means the coin basically doesn't have replay protection at the moment)
+class BitcoinClean(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCL"
+        self.fullname = "BitcoinClean"
+        self.hardforkheight = 518800
+        self.magic = 0x4d744be4
+        self.port = 8338
+        self.seeds = ("seed.bitcoinclean.org",)
+        self.maketx = self.maketx_basicsig
+        self.signtype = 0x01
+        self.signid = self.signtype
+        
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1213,6 +1229,8 @@ elif args.cointicker == "BCI":
     coin = BitcoinInterest()
 elif args.cointicker == "BCK":
     coin = BitcoinKing()
+elif args.cointicker == "BCL":
+    coin = BitcoinClean()
 elif args.cointicker == "BCP":
     coin = BitcoinCashPlus()
 elif args.cointicker == "BCX":

@@ -8,12 +8,14 @@ Requires Python 2.7
 The following coins are recognized, although may not be fully tested:
 
 *  B2X - [Segwit 2X](https://b2x-segwit.io/)
+*  BBC - [Big Bitcoin](http://bigbitcoins.org/)
 *  BCA - [Bitcoin Atom](https://bitcoinatom.io/)
 *  BCBC - [Bitcoin@CBC](https://cleanblockchain.org/)
 *  BCD - [Bitcoin Diamond](http://www.btcd.io/)
 *  BCH - [Bitcoin Cash](https://www.bitcoincash.org/)
 *  BCI - [Bitcoin Interest](http://bitcoininterest.io/)
 *  BCK - [Bitcoin King](https://btcking.org/) - NOT A TRUE FORK, NOT CLAIMABLE AT THE MOMENT
+*  BCL - [BitcoinClean](https://bitcoinclean.org/)
 *  BCP - [Bitcoin Cash Plus](http://www.bitcoincashplus.org/)
 *  BCX - [Bitcoin X](https://bcx.org/)
 *  BICC - [BitClassic Coin](http://bicc.io/)
@@ -32,13 +34,14 @@ The following coins are recognized, although may not be fully tested:
 *  BTX - [Bitcore](https://bitcore.cc/)
 *  CDY - [Bitcoin Candy](https://cdy.one/) - Forked from Bitcoin Cash, not Bitcoin
 *  LBTC - [Lightning Bitcoin](http://lbtc.io/)
+*  NBTC - [NewBitcoin](http://www.newbitcoin.org/index_en.html)
 *  SBTC - [Super Bitcoin](http://superbtc.org/)
 *  UBTC - [United Bitcoin](https://www.ub.com/)
 *  WBTC - [World Bitcoin](http://www.wbtcteam.org/)
 
-At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BTCP
+At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BTCP, BCL
 
-It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI networks so far.
+It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BCL networks so far.
 
 It should support old-style Pay-2-Public-Key that were in use in 2009-2010 (use command line switch --p2pk) but this is UNTESTED at the moment.
 
