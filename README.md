@@ -33,6 +33,7 @@ The following coins are recognized, although may not be fully tested:
 *  BTW - [Bitcoin World](http://www.btw.one/)
 *  BTX - [Bitcore](https://bitcore.cc/)
 *  CDY - [Bitcoin Candy](https://cdy.one/) - Forked from Bitcoin Cash, not Bitcoin
+*  GOD - [Bitcoin God](https://www.bitcoingod.org/)
 *  LBTC - [Lightning Bitcoin](http://lbtc.io/)
 *  NBTC - [NewBitcoin](http://www.newbitcoin.org/index_en.html)
 *  SBTC - [Super Bitcoin](http://superbtc.org/)
