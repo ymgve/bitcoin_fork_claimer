@@ -817,7 +817,8 @@ class BitcoinDiamond(BitcoinFork):
         self.hardforkheight = 495866
         self.magic = 0xd9b4debd
         self.port = 7117
-        self.seeds = ("seed1.dns.btcd.io", "seed2.dns.btcd.io", "seed3.dns.btcd.io", "seed4.dns.btcd.io", "seed5.dns.btcd.io", "seed6.dns.btcd.io")
+        self.seeds = ("seed1.dns.btcd.io", "139.198.190.221", "seed2.dns.btcd.io", "121.201.13.117", "seed3.dns.btcd.io", "139.198.12.140",
+                      "seed4.dns.btcd.io", "52.52.113.134", "seed5.dns.btcd.io", "13.114.121.21", "seed6.dns.btcd.io", "52.78.28.110")
         self.signtype = 0x01
         self.signid = self.signtype
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
