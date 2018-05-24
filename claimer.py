@@ -1461,7 +1461,7 @@ elif coin.electrum_server and coin.electrum_pushtx:
         print "Success - server accepted transaction and responded with TXID %s" % j["result"]
     except:
         print "ERROR when submitting transaction!"
-        print "Raw server response: " % repr(res)
+        print "Raw server response: %r" % res
     
 else:
     client = Client(coin)
