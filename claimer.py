@@ -324,7 +324,7 @@ def get_tx_details_from_blockchaininfo(txid, addr, hardforkheight):
         
     found = None
     for outinfo in txinfo["out"]:
-        if outinfo["addr"] == addr:
+        if "addr" in outinfo and outinfo["addr"] == addr:
             txindex = outinfo["n"]
             script = outinfo["script"].decode("hex")
             satoshis = outinfo["value"]
