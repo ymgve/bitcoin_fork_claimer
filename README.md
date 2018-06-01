@@ -20,6 +20,7 @@ The following coins are recognized, although may not be fully tested:
 *  BCX - [Bitcoin X](https://bcx.org/)
 *  BICC - [BitClassic Coin](http://bicc.io/)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
+*  BTCC - [Bitcoin Core](https://bitcoincore.cm/)
 *  BTCH - [Bitcoin Hush](http://btchush.org/)
 *  BTCP - [Bitcoin Private](https://btcprivate.org/)
 *  BTF - [Bitcoin Faith](http://bitcoinfaith.org/)
