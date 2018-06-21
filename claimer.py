@@ -30,83 +30,83 @@ def bech32decode(addr):
     assert bech32_polymod(bech32_hrp_expand(hrp) + data) == 1, "bech32 checksum failed"
     assert data[0] == 0, "only support version 0 witness for now"
     data = data[1:-6]
-    
+
     n = 0
     for c in data:
         n = n << 5 | c
 
     nbytes, extrabits = divmod(len(data) * 5, 8)
     return long2byte(n >> extrabits, nbytes)
-  
+
 def bech32encode(hrp, s):
     extrabits = (5 - ((len(s) * 8) % 5)) % 5
     nchars = (len(s) * 8 + extrabits) / 5
     n = byte2long(s) << extrabits
-    
+
     data = []
     for i in xrange(nchars):
         data.insert(0, n & 31)
         n >>= 5
-        
+
     data.insert(0, 0) # version 0
-    
+
     values = bech32_hrp_expand(hrp) + data
     polymod = bech32_polymod(values + [0,0,0,0,0,0]) ^ 1
     data += [(polymod >> 5 * (5 - i)) & 31 for i in range(6)]
     return hrp + "1" + "".join(bech32ab[c] for c in data)
-  
+
 def b58csum(s):
     return hashlib.sha256(hashlib.sha256(s).digest()).digest()[0:4]
-    
+
 def b58decode(s, checksum=True):
     idx = 0
     while s[idx] == "1":
         idx += 1
-        
+
     n = 0
     for c in s[idx:]:
         n = n * 58 + b58ab.index(c)
-        
+
     res = long2byte(n)
     res = idx * "\x00" + res
-    
+
     if checksum:
         res, cs = res[:-4], res[-4:]
         assert cs == b58csum(res), "base58 checksum failed"
-        
+
     return res
 
 def b58encode(s, checksum=True):
     if checksum:
         s += b58csum(s)
-        
+
     idx = 0
     while s[idx] == "\x00":
         idx += 1
-        
+
     n = byte2long(s)
     res = ""
     while n > 0:
         res = b58ab[n % 58] + res
         n /= 58
-        
+
     return "1" * idx + res
-    
+
 def byte2long(s):
     res = 0
     for c in s:
         res = (res << 8) | ord(c)
     return res
-    
+
 def long2byte(n, sz=None):
     res = ""
     while n > 0:
         res = chr(n & 0xff) + res
         n >>= 8
-        
+
     if sz is not None:
         res = res.rjust(sz, "\x00")
-        
+
     return res
 
 def read_varint(st):
@@ -119,7 +119,7 @@ def read_varint(st):
         return struct.unpack("<L", st.read(4))[0]
     if value == 0xff:
         return struct.unpack("<Q", st.read(8))[0]
-        
+
 def make_varint(value):
     if value < 0xfd:
         return chr(value)
@@ -127,12 +127,12 @@ def make_varint(value):
         return "\xfd" + struct.pack("<H", value)
     if value <= 0xffffffff:
         return "\xfe" + struct.pack("<L", value)
-    
+
     return "\xff" + struct.pack("<Q", value)
 
 def lengthprefixed(s):
     return make_varint(len(s)) + s
-    
+
 def modinv(x, n):
     return pow(x, n-2, n)
 
@@ -141,14 +141,14 @@ class Point(object):
         self.x = x
         self.y = y
         self.inf = inf
-        
+
 def curve_add(p, q, N):
     if p.inf:
         return q
-        
+
     if q.inf:
         return p
-    
+
     if p.x == q.x:
         if p.y == q.y:
             d1 = (3 * p.x * p.x) % N
@@ -161,12 +161,12 @@ def curve_add(p, q, N):
 
     d2i = modinv(d2, N)
     d = (d1 * d2i) % N
-        
+
     resx = (d * d - p.x - q.x) % N
     resy = (d * (p.x - resx) - p.y) % N
-    
+
     return Point(resx, resy)
-    
+
 def scalar_mul(scalar, p, N):
     t = p
     res = None
@@ -176,25 +176,25 @@ def scalar_mul(scalar, p, N):
                 res = t
             else:
                 res = curve_add(res, t, N)
-        
+
         t = curve_add(t, t, N)
-        
+
         scalar = scalar >> 1
-        
+
     return res
 
 def der_signature(r, s):
     r = long2byte(r)
     if ord(r[0]) >= 0x80:
         r = "\x00" + r
-        
+
     s = long2byte(s)
     if ord(s[0]) >= 0x80:
         s = "\x00" + s
-    
+
     res = "\x02" + lengthprefixed(r) + "\x02" + lengthprefixed(s)
     return "\x30" + lengthprefixed(res)
-    
+
 def gen_k_rfc6979(privkey, m):
     h1 = hashlib.sha256(m).digest()
     x = long2byte(privkey, 32)
@@ -204,37 +204,37 @@ def gen_k_rfc6979(privkey, m):
     V = hmac.new(K, V, hashlib.sha256).digest()
     K = hmac.new(K, V + "\x01" + x + h1, hashlib.sha256).digest()
     V = hmac.new(K, V, hashlib.sha256).digest()
-    
+
     while True:
         V = hmac.new(K, V, hashlib.sha256).digest()
         k = byte2long(V)
         if k >= 1 and k < R:
             return k
-        
+
         K = hmac.new(K, V + "\x00", hashlib.sha256).digest()
         V = hmac.new(K, V, hashlib.sha256).digest()
-    
+
 def signdata(privkey, data):
     h = doublesha(data)
     r, s = sign(privkey, h)
     return der_signature(r, s)
-    
+
 def sign(privkey, h):
     z = byte2long(h)
     k = gen_k_rfc6979(privkey, h)
-    
+
     p = scalar_mul(k, Point(gx, gy), N)
     r = p.x % R
     assert r != 0
-    
+
     ki = modinv(k, R)
     s = (ki * (z + r * privkey)) % R
     assert s != 0
     if s > (R / 2):
         s = R - s
-    
+
     return r, s
-    
+
 def serializepubkey(p, compressed):
     if compressed:
         if p.y & 1 == 1:
@@ -257,42 +257,42 @@ def hash160(s):
 def pubkey2h160(p, compressed):
     s = serializepubkey(p, compressed)
     return hash160(s)
-    
+
 def pubkey2segwith160(p):
     s = pubkey2h160(p, 1)
     return hash160("\x00\x14" + s)
-    
+
 def pubkey2addr(p, compressed):
     s = pubkey2h160(p, compressed)
     return b58encode("\x00" + s)
-    
+
 def pubkey2segwitaddr(p):
     s = pubkey2segwith160(p)
     return b58encode("\x05" + s)
-    
+
 def wif2privkey(s):
     s = b58decode(s)
     keytype = ord(s[0])
-    
+
     if len(s) == 34 and s[-1] == "\x01":
         compressed = 1
     elif len(s) == 33:
         compressed = 0
     else:
         raise Exception("Unknown private key WIF format!")
-        
+
     return keytype, byte2long(s[1:33]), compressed
-    
+
 def identify_keytype(wifkey, addr):
     if addr.startswith("bc1"):
         addrh160 = bech32decode(addr)
         assert len(addrh160) == 20
-        
+
         privkeytype, privkey, compressed = wif2privkey(args.wifkey)
         pubkey = scalar_mul(privkey, Point(gx, gy), N)
         if addrh160 == pubkey2h160(pubkey, 1):
             return "segwitbech32", privkey, pubkey, addrh160, 1
-        
+
         raise Exception("Unable to identify key type!")
     else:
         addrh160 = b58decode(addr)[-20:]
@@ -302,13 +302,13 @@ def identify_keytype(wifkey, addr):
         pubkey = scalar_mul(privkey, Point(gx, gy), N)
         if addrh160 == pubkey2h160(pubkey, 0):
             return "standard", privkey, pubkey, addrh160, 0
-            
+
         if addrh160 == pubkey2h160(pubkey, 1):
             return "standard", privkey, pubkey, addrh160, 1
-            
+
         if addrh160 == pubkey2segwith160(pubkey):
             return "segwit", privkey, pubkey, pubkey2h160(pubkey, 1), 1
-            
+
         raise Exception("Unable to identify key type!")
 
 def get_tx_details_from_blockchaininfo(txid, addr, hardforkheight):
@@ -321,7 +321,7 @@ def get_tx_details_from_blockchaininfo(txid, addr, hardforkheight):
         print "You will most likely be unable to claim these coins."
         print "Please look for an earlier transaction before the fork point.\n\n"
         get_consent("I will try anyway")
-        
+
     found = None
     for outinfo in txinfo["out"]:
         if "addr" in outinfo and outinfo["addr"] == addr:
@@ -333,32 +333,32 @@ def get_tx_details_from_blockchaininfo(txid, addr, hardforkheight):
                 found = txindex, script, satoshis
             else:
                 raise Exception("Multiple outputs with that address found! Aborting!")
-                
+
     if not found:
         raise Exception("No output with address %s found in transaction %s" % (addr, txid))
-        
+
     return found
-    
+
 def get_btx_details_from_chainz_cryptoid(addr):
     print "Querying chainz.cryptoid.info about last unspent transaction for address"
     url = "https://chainz.cryptoid.info/btx/api.dws?q=unspent&active=%s&key=a660e3112b78" % addr
 
     request = urllib2.Request(url)
     request.add_header('User-Agent', 'Mozilla/5.0')
-    opener = urllib2.build_opener() 
+    opener = urllib2.build_opener()
     res = opener.open(request)
-    
+
     txinfo = json.loads(res.read())
     unspent_outputs = txinfo["unspent_outputs"]
     if len(unspent_outputs) == 0:
         raise Exception("Block explorer didn't find any coins at that address")
-    
+
     outinfo = unspent_outputs[0]
     txid = outinfo["tx_hash"]
     txindex = outinfo["tx_ouput_n"]
     script = outinfo["script"].decode("hex")
     satoshis = int(outinfo["value"])
-    
+
     return txid, txindex, script, satoshis
 
 def get_coin_details_from_electrum(coin, targettxid, sourceh160, keytype):
@@ -372,12 +372,12 @@ def get_coin_details_from_electrum(coin, targettxid, sourceh160, keytype):
         sc = ssl.wrap_socket(sc)
     sc.send('{ "id": 0, "method": "blockchain.address.listunspent", "params": [ "%s" ] }\n' % addr)
     res = readline(sc)
-        
+
     j = json.loads(res)
     unspents = j["result"]
     if len(unspents) == 0:
         raise Exception("No %s at this address!" % coin.ticker)
-    
+
     if len(unspents) == 1:
         target = unspents[0]
     else:
@@ -386,17 +386,17 @@ def get_coin_details_from_electrum(coin, targettxid, sourceh160, keytype):
             if tx["tx_hash"] == targettxid:
                 target = tx
                 break
-                
+
         if target is None:
             print "Multiple potential outputs possible - please use one of these TXIDs to claim"
             for tx in unspents:
                 coinamount = int(tx["value"]) * coin.coinratio / 100000000.0
                 btcamount = int(tx["value"]) / 100000000.0
                 print "    TXID %s : %20.8f %s (equivalent to %.8f BTC)" % (tx["tx_hash"], coinamount, coin.ticker, btcamount)
-                
+
             exit()
 
-    
+
     return target["tx_hash"], int(target["tx_pos"]), None, int(target["value"])
 
 def readline(sc):
@@ -409,7 +409,7 @@ def readline(sc):
             break
         else:
             res += c
-    
+
     return res
 
 def get_consent(consentstring):
@@ -420,23 +420,23 @@ def get_consent(consentstring):
         raise Exception("User did not write '%s', aborting" % consentstring)
 
 class Client(object):
-    
+
     _MAX_MEMPOOL_CHECKS = 5
     _MAX_CONNECTION_RETRIES = 100
-    
+
     def __init__(self, coin):
         self.coin = coin
         self._transaction_sent = False
         self._transaction_accepted = None
         self._mempool_check_count = 0
         self._connection_retries = 0
-        
+
     def send(self, cmd, msg):
         magic = struct.pack("<L", self.coin.magic)
         wrapper = magic + cmd.ljust(12, "\x00") + struct.pack("<L", len(msg)) + hashlib.sha256(hashlib.sha256(msg).digest()).digest()[0:4] + msg
         self.sc.sendall(wrapper)
         print "---> %s (%d bytes)" % (repr(cmd), len(msg))
-        
+
     def recv_msg(self):
         def recv_all(length):
             ret = ""
@@ -455,7 +455,7 @@ class Client(object):
         payloadlen = struct.unpack("<I", header[16:20])[0]
         payload = recv_all(payloadlen)
         return cmd, payload
-        
+
     def send_tx(self, txhash, tx, checkfee):
         serverindex = ord(os.urandom(1)) % len(self.coin.seeds)
         txhash_hexfmt = txhash[::-1].encode("hex")
@@ -466,7 +466,7 @@ class Client(object):
                 self.sc = socket.create_connection(address, 10)
                 print "SUCCESS, connected to", self.sc.getpeername()
                 self.sc.settimeout(120)
-                
+
                 services = 0
                 localaddr = "\x00" * 8 + "00000000000000000000FFFF".decode("hex") + "\x00" * 6
                 nonce = os.urandom(8)
@@ -494,11 +494,11 @@ class Client(object):
                         print "\tuser agent", repr(user_agent)
                         print "\tblock height", repr(start_height)
                         client.send("verack", "")
-                        
+
                     elif cmd == "sendheaders":
                         msg = make_varint(0)
                         client.send("headers", msg)
-                        
+
                     elif cmd == "ping":
                         client.send("pong", payload)
 
@@ -509,7 +509,7 @@ class Client(object):
                             print "\tRe-sent transaction: %s" % txhash_hexfmt
 
                         client.send("mempool", "")
-                        
+
                     elif cmd == "getdata":
                         if payload == "\x01\x01\x00\x00\x00" + txhash:
                             print "\tPeer requesting transaction details for %s" % txhash_hexfmt
@@ -521,7 +521,7 @@ class Client(object):
                         elif self._transaction_sent:
                             print "\tReceived getdata without our txhash. The transaction may have been rejected."
                             print "\tThis script will retransmit the transaction and monitor the mempool for a few minutes before giving up."
-                         
+
                     elif cmd == "feefilter":
                         minfee = struct.unpack("<Q", payload)[0]
                         print "\tserver requires minimum fee of %d satoshis" % minfee
@@ -529,7 +529,7 @@ class Client(object):
                             print "\tour fee is >= minimum fee, so should be OK"
                         else:
                             print "\tOUR FEE IS TOO SMALL, transaction might not be accepted"
-                            
+
                     elif cmd == "inv":
                         blocks_to_get = []
                         st = cStringIO.StringIO(payload)
@@ -546,13 +546,13 @@ class Client(object):
                             elif i == 10:
                                 print "\t..."
                                 print "\tNot printing additional %d transactions" % (ninv - i)
-                            
+
                             if invtype == 1:
                                 if invhash == txhash:
                                     transaction_found = True
                             elif invtype == 2:
                                 blocks_to_get.append(invhash)
-                        if transaction_found and not self._transaction_accepted:        
+                        if transaction_found and not self._transaction_accepted:
                             print "\n\tOUR TRANSACTION IS IN THEIR MEMPOOL, TRANSACTION ACCEPTED! YAY!"
                             if args.noblock:
                             # User specified --noblock, we are done here
@@ -575,7 +575,7 @@ class Client(object):
                             msg = make_varint(len(inv)) + "".join(inv)
                             client.send("getdata", msg)
                             print "\trequesting %d blocks" % len(blocks_to_get)
-                        
+
                     elif cmd == "block":
                         if tx in payload or plaintx in payload:
                             print "\tBLOCK WITH OUR TRANSACTION OBSERVED! YES!"
@@ -583,7 +583,7 @@ class Client(object):
                             return
                         else:
                             print "\tTransaction not included in observed block."
-                            
+
                     elif cmd == "addr":
                         st = cStringIO.StringIO(payload)
                         naddr = read_varint(st)
@@ -596,7 +596,7 @@ class Client(object):
                             print "\tGot peer address: %s" % address
                     elif cmd not in ('sendcmpct', 'verack'):
                         print repr(cmd), repr(payload)
-                
+
             except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
                 if self._connection_retries >= self._MAX_CONNECTION_RETRIES:
                     raise
@@ -606,7 +606,7 @@ class Client(object):
                 self._connection_retries += 1
                 time.sleep(2)
 
-    
+
 class BitcoinFork(object):
     def __init__(self):
         self.coinratio = 1.0
@@ -622,26 +622,26 @@ class BitcoinFork(object):
         self.bch_fork = False
         self.address_size = 21
         self.electrum_server = None
-        
+
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype):
         verifytotal = fee
-        
+
         version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
         inscript = lengthprefixed(signscript)
         satoshis = struct.pack("<Q", sourcesatoshis)
-        
+
         txouts = ""
         for outscript, amount, destaddr, rawaddr in outputs:
             txouts += struct.pack("<Q", amount) + lengthprefixed(outscript)
             verifytotal += amount
-        
+
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
-        
+
         to_sign = version + self.BCDgarbage + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txouts) + locktime + sigtype + self.extrabytes
-        
+
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
 
@@ -658,57 +658,57 @@ class BitcoinFork(object):
             script = "\x00"
         else:
             raise Exception("Not implemented!")
-            
+
         plaintx = version + self.BCDgarbage + make_varint(1) + prevout + script + sequence + make_varint(len(outputs)) + txouts + locktime
-        
+
         if verifytotal != sourcesatoshis:
             raise Exception("Addition of output amounts does not match input amount (Bug?), aborting")
-            
+
         if keytype in ("p2pk", "standard"):
             return plaintx, plaintx
         else:
             witnesstx = version + self.BCDgarbage + "\x00\x01" + plaintx[4+len(self.BCDgarbage):-4] + "\x02" + sigblock + locktime
             return witnesstx, plaintx
-        
+
     def maketx_basicsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype):
         if keytype in ("segwit", "segwitbech32"):
             return self.maketx_segwitsig(sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype)
-            
+
         verifytotal = fee
-        
+
         version = struct.pack("<I", self.txversion)
         prevout = sourcetx.decode("hex")[::-1] + struct.pack("<I", sourceidx)
         sequence = struct.pack("<i", -1)
         inscript = lengthprefixed(signscript)
-        
+
         txouts = ""
         for outscript, amount, destaddr, rawaddr in outputs:
             txouts += struct.pack("<Q", amount) + lengthprefixed(outscript)
             verifytotal += amount
-        
+
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
-        
+
         to_sign = version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(len(outputs)) + txouts + locktime + sigtype + self.extrabytes
-        
+
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
-        
+
         if keytype == "p2pk":
             sigblock = lengthprefixed(signature)
         else:
             sigblock = lengthprefixed(signature) + lengthprefixed(serpubkey)
-            
+
         if keytype == "segwit_btcp":
             sigblock += lengthprefixed("\x00\x14" + sourceh160)
-        
+
         plaintx = version + self.BCDgarbage + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(len(outputs)) + txouts + locktime
-        
+
         if verifytotal != sourcesatoshis:
             raise Exception("Addition of output amounts does not match input amount (Bug?), aborting")
-            
+
         return plaintx, plaintx
-        
+
 class BitcoinFaith(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
@@ -808,7 +808,7 @@ class SuperBitcoin(BitcoinFork):
         self.signid = self.signtype
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         self.extrabytes = lengthprefixed("sbtc")
-        
+
 class BitcoinDiamond(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
@@ -825,7 +825,7 @@ class BitcoinDiamond(BitcoinFork):
         self.txversion = 12
         self.BCDgarbage = "\xff" * 32
         self.coinratio = 10.0
-        
+
 class BitcoinPizza(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
@@ -910,7 +910,7 @@ class BitCore(BitcoinFork):
         self.signtype = 0x01
         self.signid = self.signtype
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
-        
+
 class BitcoinPay(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
@@ -935,7 +935,7 @@ class BitcoinKing(BitcoinFork):
         self.seeds = ("47.52.28.49",)
         self.signtype = 0x41
         self.signid = self.signtype | (143 << 8)
-        
+
 # https://github.com/bitcoincandyofficial/bitcoincandy
 class BitcoinCandy(BitcoinFork):
     def __init__(self):
@@ -1194,7 +1194,7 @@ class BitcoinClean(BitcoinFork):
         self.maketx = self.maketx_basicsig
         self.signtype = 0x01
         self.signid = self.signtype
-        
+
 class BitcoinCore(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
@@ -1207,11 +1207,28 @@ class BitcoinCore(BitcoinFork):
         self.signtype = 0x01 | 0x20
         self.signid = self.signtype
         self.bch_fork = True
-        
+
+# https://github.com/bitcoinfile/bitcoinfile
+class BitcoinFile(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BIFI"
+        self.fullname = "BitcoinFile"
+        self.hardforkheight = 501225
+        self.magic = 0xd8c42ef8
+        self.port = 10698
+        self.seeds = ("dnsseed1.bitcoinfile.org", "dnsseed2.bitcoinfile.org", "dnsseed3.bitcoinfile.org", "dnsseed4.bitcoinfile.org", "dnsseed5.bitcoinfile.org", "dnsseed6.bitcoinfile.org", "dnsseed7.bitcoinfile.org", "dnsseed8.bitcoinfile.org", "dnsseed9.bitcoinfile.org")
+        self.maketx = self.maketx_basicsig
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.txversion = 20
+        self.BCDgarbage = struct.pack("<I", 20)
+        self.coinratio = 1000.0
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1293,7 +1310,9 @@ elif args.cointicker == "UBTC":
     coin = UnitedBitcoin()
 elif args.cointicker == "WBTC":
     coin = WorldBitcoin()
-    
+elif args.cointicker == "BIFI":
+    coin = BitcoinFile()
+
 if args.height and coin.hardforkheight < args.height:
     print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
     print "(fork at height %d)" % coin.hardforkheight
@@ -1303,7 +1322,7 @@ keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey,
 
 if keytype == "segwit" and args.cointicker == "BTCP":
     keytype = "segwit_btcp"
-    
+
 if args.p2pk:
     keytype = "p2pk"
     srcscript = lengthprefixed(serializepubkey(pubkey, compressed)) + "\xac"
@@ -1337,21 +1356,21 @@ else:
         raise Exception("Bitcoin@CBC is not a true fork and therefore does not work with blockchain.info mode. Please use http://be.cleanblockchain.org and specify txindex and satoshis manually.")
     else:
         txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
-    
+
     if bciscript is not None and bciscript != srcscript:
         raise Exception("Script type in source output that is not supported!")
 
 # I misunderstood the WBTC dev implementation of 100:1 fork ratio - gotta multiply by 100 here to claim all coins that existed pre-fork
 if args.cointicker == "WBTC" and not args.no_wtc_conv:
     satoshis *= 100
-    
+
 remaining = satoshis - args.fee
 if remaining <= 0:
     print "The specified amount of satoshis specified is smaller than or equal to the fee."
     print "Note that the '--satoshis' parameter needs to be the TOTAL amount available in the source transaction."
     print "If you want a custom fee, use '--fee'."
     raise Exception("No coins remaining to place in outputs")
-    
+
 outputs = []
 for output in args.destaddr.split(","):
     if ":" not in output:
@@ -1361,7 +1380,7 @@ for output in args.destaddr.split(","):
         amount = int(amount)
         if amount > remaining:
             raise Exception("Specified satoshis amount exceeds remaining balance")
-        
+
     if destaddr.startswith("bc1"):
         rawaddr = bech32decode(destaddr)
         assert len(rawaddr) == 20
@@ -1392,7 +1411,7 @@ for i in xrange(len(outputs)):
             remaining = 0
         else:
             raise Exception("Two outputs without specified amounts, can't continue")
-    
+
 if remaining != 0:
     raise Exception("Addition of output amounts does not match input amount (Bug?), aborting")
 
@@ -1401,7 +1420,7 @@ if keytype in ("p2pk", "standard", "segwit", "segwit_btcp", "segwitbech32"):
     txhash = doublesha(plaintx)
 else:
     raise Exception("Not implemented!")
-    
+
 print "Raw transaction"
 print tx.encode("hex")
 print
@@ -1414,7 +1433,7 @@ for outscript, amount, destaddr, rawaddr in outputs:
     coinamount = amount * coin.coinratio / 100000000.0
     btcamount = amount / 100000000.0
     print "    %.8f %s (equivalent to %.8f BTC) TO %s" % (coinamount, coin.ticker, btcamount, destaddr)
-    
+
 coinamount = args.fee * coin.coinratio / 100000000.0
 btcamount = args.fee / 100000000.0
 print "!!! %.8f %s (equivalent to %.8f BTC) WILL BE SENT AS FEES! CONTINUE AT YOUR OWN RISK !!!" % (coinamount, coin.ticker, btcamount)
@@ -1433,7 +1452,7 @@ for outscript, amount, destaddr, rawaddr in outputs:
         idx = tx.index(rawaddr[-10:])
         part1 = tx[idx-10:idx]
         testaddr = b58encode(rawaddr[:-20] + part1 + part2)
-        
+
     if destaddr != testaddr or outscript not in tx:
         raise Exception("Corrupted destination address! Check your RAM!")
 
@@ -1462,13 +1481,13 @@ if coin.ticker == "BTP":
     except urllib2.HTTPError, e:
         print "API gave error", e
         print repr(e.read())
-        
+
 elif coin.electrum_server and coin.electrum_pushtx:
     sc = socket.create_connection((coin.electrum_server, coin.electrum_port))
     if coin.electrum_ssl:
         sc = ssl.wrap_socket(sc)
     sc.send('{ "id": 1, "method": "blockchain.transaction.broadcast", "params": [ "%s" ] }\n' % tx.encode("hex"))
-    
+
     res = readline(sc)
     j = json.loads(res)
     try:
@@ -1477,8 +1496,7 @@ elif coin.electrum_server and coin.electrum_pushtx:
     except:
         print "ERROR when submitting transaction!"
         print "Raw server response: %r" % res
-    
+
 else:
     client = Client(coin)
     client.send_tx(txhash, tx, args.fee)
-
