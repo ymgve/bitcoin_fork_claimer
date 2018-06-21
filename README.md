@@ -19,6 +19,7 @@ The following coins are recognized, although may not be fully tested:
 *  BCP - [Bitcoin Cash Plus](http://www.bitcoincashplus.org/)
 *  BCX - [Bitcoin X](https://bcx.org/)
 *  BICC - [BitClassic Coin](http://bicc.io/)
+*  BIFI - [Bitcoin File](https://www.bitcoinfile.org)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
 *  BTCC - [Bitcoin Core](https://bitcoincore.cm/)
 *  BTCH - [Bitcoin Hush](http://btchush.org/)
@@ -41,7 +42,7 @@ The following coins are recognized, although may not be fully tested:
 *  UBTC - [United Bitcoin](https://www.ub.com/)
 *  WBTC - [World Bitcoin](http://www.wbtcteam.org/)
 
-At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BTCP, BCL
+At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BTCP, BCL, BIFI
 
 It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BCL networks so far.
 
@@ -58,7 +59,7 @@ blockchain.info mode:
 
     claimer.py <cointype> <source transaction ID> <source private key> <source address> <destination address>
     claimer.py BTG 4adc427d330497992710feaa32f85c389ef5106f74e7006878bd14b54500dfff 5K2YUVmWfxbmvsNxCsfvArXdGXm7d5DC9pn4yD75k2UaSYgkXTh 1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE 1aa5cmqmvQq8YQTEqcTmW7dfBNuFwgdCD
-    
+
 Standalone mode:
 
     claimer.py <cointype> <source transaction ID> <source private key> <source address> <destination address> --txindex <output index in transaction> --satoshis <number of satoshis on the source transaction output>
@@ -69,7 +70,7 @@ Default fee is set to 1000 satoshis, but can be changed with the `--fee` option.
 You can specify multiple destination addresses in the destination address field, the format is:
 
     <address>[,<address>][,<address>][,<address>]...
-    
+
 where `<address>` is either a plain address or an address plus an amount in satoshis, separated by a colon. Examples:
 
     13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB
@@ -77,7 +78,7 @@ where `<address>` is either a plain address or an address plus an amount in sato
     13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB:1000000,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE
     13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB:1000000,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE:1000000
     13PuTPQjuZ5Vh1RCrTLqYK79scG2T45LGB,1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE:1000000
-    
+
 One of the destination addresses can be without a specified amount, which makes all the remaining coins (minus the fee) go to that address.
 
 Full example:
@@ -98,10 +99,10 @@ There is another python script for claiming FBTC (Fast Bitcoin). The FBTC networ
 and you can transfer arbitrary amounts from an address multiple times.
 
 Usage:
-    
+
     fbtcclaimer.py <private key in WIF format> <public source address> <destination address> <number of satoshis to send, including fee>
     fbtcclaimer.py 5K2YUVmWfxbmvsNxCsfvArXdGXm7d5DC9pn4yD75k2UaSYgkXTh 1HKqKTMpBTZZ8H5zcqYEWYBaaWELrDEXeE 1aa5cmqmvQq8YQTEqcTmW7dfBNuFwgdCD 3053
-    
+
 fbtcclaimer.py also requires aes.py to be in the same folder as the script. Thanks to https://github.com/ricmoo/pyaes for the implementation.
 
 ---
