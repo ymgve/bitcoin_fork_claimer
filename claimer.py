@@ -1207,11 +1207,28 @@ class BitcoinCore(BitcoinFork):
         self.signtype = 0x01 | 0x20
         self.signid = self.signtype
         self.bch_fork = True
+
+# https://github.com/bitcoinfile/bitcoinfile
+class BitcoinFile(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BIFI"
+        self.fullname = "BitcoinFile"
+        self.hardforkheight = 501225
+        self.magic = 0xd8c42ef8
+        self.port = 10698
+        self.seeds = ("dnsseed1.bitcoinfile.org", "dnsseed2.bitcoinfile.org", "dnsseed3.bitcoinfile.org", "dnsseed4.bitcoinfile.org", "dnsseed5.bitcoinfile.org")
+        self.maketx = self.maketx_basicsig
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.txversion = 20
+        self.BCDgarbage = struct.pack("<I", 20)
+        self.coinratio = 1000.0
         
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1293,6 +1310,8 @@ elif args.cointicker == "UBTC":
     coin = UnitedBitcoin()
 elif args.cointicker == "WBTC":
     coin = WorldBitcoin()
+elif args.cointicker == "BIFI":
+    coin = BitcoinFile()
     
 if args.height and coin.hardforkheight < args.height:
     print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"

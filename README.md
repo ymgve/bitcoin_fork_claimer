@@ -19,6 +19,7 @@ The following coins are recognized, although may not be fully tested:
 *  BCP - [Bitcoin Cash Plus](http://www.bitcoincashplus.org/)
 *  BCX - [Bitcoin X](https://bcx.org/)
 *  BICC - [BitClassic Coin](http://bicc.io/)
+*  BIFI - [Bitcoin File](https://www.bitcoinfile.org)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
 *  BTCC - [Bitcoin Core](https://bitcoincore.cm/)
 *  BTCH - [Bitcoin Hush](http://btchush.org/)
@@ -41,7 +42,7 @@ The following coins are recognized, although may not be fully tested:
 *  UBTC - [United Bitcoin](https://www.ub.com/)
 *  WBTC - [World Bitcoin](http://www.wbtcteam.org/)
 
-At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BTCP, BCL
+At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BTCP, BCL, BIFI
 
 It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BCL networks so far.
 
