@@ -1195,6 +1195,7 @@ class BitcoinClean(BitcoinFork):
         self.signtype = 0x01
         self.signid = self.signtype
         
+# https://github.com/bitcoin-cored/bitcoin-cored
 class BitcoinCore(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
@@ -1207,8 +1208,8 @@ class BitcoinCore(BitcoinFork):
         self.signtype = 0x01 | 0x20
         self.signid = self.signtype
         self.bch_fork = True
-
-# https://github.com/bitcoinfile/bitcoinfile
+        
+# https://github.com/bitcoinfile/bitcoinfile/tree/master/bificore
 class BitcoinFile(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
@@ -1217,12 +1218,14 @@ class BitcoinFile(BitcoinFork):
         self.hardforkheight = 501225
         self.magic = 0xd8c42ef8
         self.port = 10698
-        self.seeds = ("dnsseed1.bitcoinfile.org", "dnsseed2.bitcoinfile.org", "dnsseed3.bitcoinfile.org", "dnsseed4.bitcoinfile.org", "dnsseed5.bitcoinfile.org")
+        self.seeds = ("dnsseed1.bitcoinfile.org", "dnsseed2.bitcoinfile.org", "dnsseed3.bitcoinfile.org",
+                      "dnsseed4.bitcoinfile.org", "dnsseed5.bitcoinfile.org", "dnsseed6.bitcoinfile.org",
+                      "dnsseed7.bitcoinfile.org", "dnsseed8.bitcoinfile.org", "dnsseed9.bitcoinfile.org")
         self.maketx = self.maketx_basicsig
         self.signtype = 0x01
         self.signid = self.signtype
         self.txversion = 20
-        self.BCDgarbage = struct.pack("<I", 20)
+        self.BCDgarbage = struct.pack("<I", self.txversion)
         self.coinratio = 1000.0
         
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
@@ -1268,6 +1271,8 @@ elif args.cointicker == "BCX":
     coin = BitcoinX()
 elif args.cointicker == "BICC":
     coin = BitcoinClassicCoin()
+elif args.cointicker == "BIFI":
+    coin = BitcoinFile()
 elif args.cointicker == "BPA":
     coin = BitcoinPizza()
 elif args.cointicker == "BTCC":
@@ -1310,8 +1315,6 @@ elif args.cointicker == "UBTC":
     coin = UnitedBitcoin()
 elif args.cointicker == "WBTC":
     coin = WorldBitcoin()
-elif args.cointicker == "BIFI":
-    coin = BitcoinFile()
     
 if args.height and coin.hardforkheight < args.height:
     print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
