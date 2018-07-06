@@ -1230,6 +1230,77 @@ class BitcoinFile(BitcoinFork):
         
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
+def coin_from_ticker(cointicker):
+    if cointicker == "B2X":
+        coin = Bitcoin2X()
+    elif cointicker == "BBC":
+        coin = BigBitcoin()
+    elif cointicker == "BCA":
+        coin = BitcoinAtom()
+    elif cointicker == "BCBC":
+        coin = BitcoinCBC()
+    elif cointicker == "BCD":
+        coin = BitcoinDiamond()
+    elif cointicker == "BCH":
+        coin = BitcoinCash()
+    elif cointicker == "BCI":
+        coin = BitcoinInterest()
+    elif cointicker == "BCK":
+        coin = BitcoinKing()
+    elif cointicker == "BCL":
+        coin = BitcoinClean()
+    elif cointicker == "BCP":
+        coin = BitcoinCashPlus()
+    elif cointicker == "BCX":
+        coin = BitcoinX()
+    elif cointicker == "BICC":
+        coin = BitcoinClassicCoin()
+    elif cointicker == "BIFI":
+        coin = BitcoinFile()
+    elif cointicker == "BPA":
+        coin = BitcoinPizza()
+    elif cointicker == "BTCC":
+        coin = BitcoinCore()
+    elif cointicker == "BTCH":
+        coin = BitcoinHush()
+    elif cointicker == "BTCP":
+        coin = BitcoinPrivate()
+    elif cointicker == "BTF":
+        coin = BitcoinFaith()
+    elif cointicker == "BTG":
+        coin = BitcoinGold()
+    elif cointicker == "BTH":
+        coin = BitcoinHot()
+    elif cointicker == "BTN":
+        coin = BitcoinNew()
+    elif cointicker == "BTP":
+        coin = BitcoinPay()
+    elif cointicker == "BTSQ":
+        coin = BitcoinCommunity()
+    elif cointicker == "BTT":
+        coin = BitcoinTop()
+    elif cointicker == "BTV":
+        coin = BitcoinVote()
+    elif cointicker == "BTW":
+        coin = BitcoinWorld()
+    elif cointicker == "BTX":
+        coin = BitCore()
+    elif cointicker == "CDY":
+        coin = BitcoinCandy()
+    elif cointicker == "GOD":
+        coin = BitcoinGod()
+    elif cointicker == "LBTC":
+        coin = LightningBitcoin()
+    elif cointicker == "NBTC":
+        coin = NewBitcoin()
+    elif cointicker == "SBTC":
+        coin = SuperBitcoin()
+    elif cointicker == "UBTC":
+        coin = UnitedBitcoin()
+    elif cointicker == "WBTC":
+        coin = WorldBitcoin()
+    return coin
+
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
@@ -1249,74 +1320,7 @@ if __name__=='__main__':
 
     args = parser.parse_args()
 
-    if args.cointicker == "B2X":
-        coin = Bitcoin2X()
-    elif args.cointicker == "BBC":
-        coin = BigBitcoin()
-    elif args.cointicker == "BCA":
-        coin = BitcoinAtom()
-    elif args.cointicker == "BCBC":
-        coin = BitcoinCBC()
-    elif args.cointicker == "BCD":
-        coin = BitcoinDiamond()
-    elif args.cointicker == "BCH":
-        coin = BitcoinCash()
-    elif args.cointicker == "BCI":
-        coin = BitcoinInterest()
-    elif args.cointicker == "BCK":
-        coin = BitcoinKing()
-    elif args.cointicker == "BCL":
-        coin = BitcoinClean()
-    elif args.cointicker == "BCP":
-        coin = BitcoinCashPlus()
-    elif args.cointicker == "BCX":
-        coin = BitcoinX()
-    elif args.cointicker == "BICC":
-        coin = BitcoinClassicCoin()
-    elif args.cointicker == "BIFI":
-        coin = BitcoinFile()
-    elif args.cointicker == "BPA":
-        coin = BitcoinPizza()
-    elif args.cointicker == "BTCC":
-        coin = BitcoinCore()
-    elif args.cointicker == "BTCH":
-        coin = BitcoinHush()
-    elif args.cointicker == "BTCP":
-        coin = BitcoinPrivate()
-    elif args.cointicker == "BTF":
-        coin = BitcoinFaith()
-    elif args.cointicker == "BTG":
-        coin = BitcoinGold()
-    elif args.cointicker == "BTH":
-        coin = BitcoinHot()
-    elif args.cointicker == "BTN":
-        coin = BitcoinNew()
-    elif args.cointicker == "BTP":
-        coin = BitcoinPay()
-    elif args.cointicker == "BTSQ":
-        coin = BitcoinCommunity()
-    elif args.cointicker == "BTT":
-        coin = BitcoinTop()
-    elif args.cointicker == "BTV":
-        coin = BitcoinVote()
-    elif args.cointicker == "BTW":
-        coin = BitcoinWorld()
-    elif args.cointicker == "BTX":
-        coin = BitCore()
-    elif args.cointicker == "CDY":
-        coin = BitcoinCandy()
-    elif args.cointicker == "GOD":
-        coin = BitcoinGod()
-    elif args.cointicker == "LBTC":
-        coin = LightningBitcoin()
-    elif args.cointicker == "NBTC":
-        coin = NewBitcoin()
-    elif args.cointicker == "SBTC":
-        coin = SuperBitcoin()
-    elif args.cointicker == "UBTC":
-        coin = UnitedBitcoin()
-    elif args.cointicker == "WBTC":
-        coin = WorldBitcoin()
+    coin=coin_from_ticker(args.cointicker)
         
     if args.height and coin.hardforkheight < args.height:
         print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
