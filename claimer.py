@@ -1230,81 +1230,26 @@ class BitcoinFile(BitcoinFork):
         
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
+def get_all_coins():
+    outcoins={}
+    for name,cls in globals().items():
+        #if it's a class and a strict subclass of bitcoinfork 
+        if(name != 'BitcoinFork' and type(cls)==type(BitcoinFork) and issubclass(cls,BitcoinFork)):
+            coin=cls()
+            outcoins[coin.ticker.upper()]=coin
+    return outcoins
+
+allcoins=get_coins()
+
 def coin_from_ticker(cointicker):
-    if cointicker == "B2X":
-        coin = Bitcoin2X()
-    elif cointicker == "BBC":
-        coin = BigBitcoin()
-    elif cointicker == "BCA":
-        coin = BitcoinAtom()
-    elif cointicker == "BCBC":
-        coin = BitcoinCBC()
-    elif cointicker == "BCD":
-        coin = BitcoinDiamond()
-    elif cointicker == "BCH":
-        coin = BitcoinCash()
-    elif cointicker == "BCI":
-        coin = BitcoinInterest()
-    elif cointicker == "BCK":
-        coin = BitcoinKing()
-    elif cointicker == "BCL":
-        coin = BitcoinClean()
-    elif cointicker == "BCP":
-        coin = BitcoinCashPlus()
-    elif cointicker == "BCX":
-        coin = BitcoinX()
-    elif cointicker == "BICC":
-        coin = BitcoinClassicCoin()
-    elif cointicker == "BIFI":
-        coin = BitcoinFile()
-    elif cointicker == "BPA":
-        coin = BitcoinPizza()
-    elif cointicker == "BTCC":
-        coin = BitcoinCore()
-    elif cointicker == "BTCH":
-        coin = BitcoinHush()
-    elif cointicker == "BTCP":
-        coin = BitcoinPrivate()
-    elif cointicker == "BTF":
-        coin = BitcoinFaith()
-    elif cointicker == "BTG":
-        coin = BitcoinGold()
-    elif cointicker == "BTH":
-        coin = BitcoinHot()
-    elif cointicker == "BTN":
-        coin = BitcoinNew()
-    elif cointicker == "BTP":
-        coin = BitcoinPay()
-    elif cointicker == "BTSQ":
-        coin = BitcoinCommunity()
-    elif cointicker == "BTT":
-        coin = BitcoinTop()
-    elif cointicker == "BTV":
-        coin = BitcoinVote()
-    elif cointicker == "BTW":
-        coin = BitcoinWorld()
-    elif cointicker == "BTX":
-        coin = BitCore()
-    elif cointicker == "CDY":
-        coin = BitcoinCandy()
-    elif cointicker == "GOD":
-        coin = BitcoinGod()
-    elif cointicker == "LBTC":
-        coin = LightningBitcoin()
-    elif cointicker == "NBTC":
-        coin = NewBitcoin()
-    elif cointicker == "SBTC":
-        coin = SuperBitcoin()
-    elif cointicker == "UBTC":
-        coin = UnitedBitcoin()
-    elif cointicker == "WBTC":
-        coin = WorldBitcoin()
-    return coin
+    try:
+        return allcoins[cointicker.upper()]
+    except Exception as e:
+        raise Exception("Coin %s not found!" % (cointicker))
 
 if __name__=='__main__':
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI"])
+    parser.add_argument("cointicker", help="Coin type", choices=sorted(list(allcoins.keys())))
     parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
     parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
     parser.add_argument("srcaddr", help="Source address of the coins")
