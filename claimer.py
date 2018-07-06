@@ -622,6 +622,7 @@ class BitcoinFork(object):
         self.bch_fork = False
         self.address_size = 21
         self.electrum_server = None
+        self.enabled=True
         
     def maketx_segwitsig(self, sourcetx, sourceidx, sourceh160, signscript, sourcesatoshis, sourceprivkey, pubkey, compressed, outputs, fee, keytype):
         verifytotal = fee
@@ -1236,10 +1237,11 @@ def get_all_coins():
         #if it's a class and a strict subclass of bitcoinfork 
         if(name != 'BitcoinFork' and type(cls)==type(BitcoinFork) and issubclass(cls,BitcoinFork)):
             coin=cls()
-            outcoins[coin.ticker.upper()]=coin
+            if(coin.enabled):
+                outcoins[coin.ticker.upper()]=coin
     return outcoins
 
-allcoins=get_coins()
+allcoins=get_all_coins()
 
 def coin_from_ticker(cointicker):
     try:
