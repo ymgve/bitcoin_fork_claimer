@@ -1461,11 +1461,12 @@ if __name__=='__main__':
     parser.add_argument("--force", help="Do not require consent, submit transaction directly", action="store_true")
     parser.add_argument("--noblock", help="Do not wait for block confirmation, finish after the transaction is in mempool", action="store_true")
     parser.add_argument("--no_wtc_conv", help="Disable 100:1 up-conversion of WBTC (In practice you should never need this)", action="store_true")
+    parser.add_argument("--no_verify", help="Do not verify transactions after constructing them",action="store_true")
 
     args = parser.parse_args()
 
     coin=coin_from_ticker(args.cointicker)
         
-    txhash,tx,fee=generate_signed_claim(coin,args.cointicker,args.txid,args.wifkey,args.srcaddr,args.destaddr,args.height,args.txindex,args.satoshis,args.fee,args.p2pk,args.no_wtc_conv,no_verify=False)
+    txhash,tx,fee=generate_signed_claim(coin,args.cointicker,args.txid,args.wifkey,args.srcaddr,args.destaddr,args.height,args.txindex,args.satoshis,args.fee,args.p2pk,args.no_wtc_conv,no_verify=args.no_verify)
         
     broadcast_claim(coin,txhash,tx,fee,force=args.force)
