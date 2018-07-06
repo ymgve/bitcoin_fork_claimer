@@ -1358,7 +1358,45 @@ def generate_signed_claim(coin,cointicker,txid,wifkey,srcaddr,destaddr,height,tx
     else:
         raise Exception("Not implemented!")
 
-    return txhash,tx,fee,satoshis,outputs
+    if(not no_verify):
+        verify_amounts(coin,satoshis,outputs,tx,destaddr,fee)
+
+    return txhash,tx,fee
+
+def verify_amounts(coin,satoshis,outputs,tx,destaddr,fee):
+    coinamount = satoshis * coin.coinratio / 100000000.0
+    btcamount = satoshis / 100000000.0
+    print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s" % (coinamount, coin.ticker, btcamount, srcaddr)
+
+    for outscript, amount, destaddr, rawaddr in outputs:
+        coinamount = amount * coin.coinratio / 100000000.0
+        btcamount = amount / 100000000.0
+        print "    %.8f %s (equivalent to %.8f BTC) TO %s" % (coinamount, coin.ticker, btcamount, destaddr)
+        
+    coinamount = fee * coin.coinratio / 100000000.0
+    btcamount = fee / 100000000.0
+    print "!!! %.8f %s (equivalent to %.8f BTC) WILL BE SENT AS FEES! CONTINUE AT YOUR OWN RISK !!!" % (coinamount, coin.ticker, btcamount)
+
+    # avoid bad RAM errors in destination address
+    for outscript, amount, destaddr, rawaddr in outputs:
+        if destaddr.startswith("bc1"):
+            idx = tx.index(rawaddr[:10])
+            part2 = tx[idx+10:idx+20]
+            idx = tx.index(rawaddr[10:20])
+            part1 = tx[idx-10:idx]
+            testaddr = bech32encode("bc", part1 + part2)
+        else:
+            idx = tx.index(rawaddr[-20:-10])
+            part2 = tx[idx+10:idx+20]
+            idx = tx.index(rawaddr[-10:])
+            part1 = tx[idx-10:idx]
+            testaddr = b58encode(rawaddr[:-20] + part1 + part2)
+            
+        if destaddr != testaddr or outscript not in tx:
+            raise Exception("Corrupted destination address! Check your RAM!")
+
+
+
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
@@ -1380,43 +1418,8 @@ if __name__=='__main__':
 
     coin=coin_from_ticker(args.cointicker)
         
-    txhash,tx,fee,satoshis,outputs=generate_signed_claim(coin,args.cointicker,args.txid,args.wifkey,args.srcaddr,args.destaddr,args.height,args.txindex,args.satoshis,args.fee,args.p2pk,args.no_wtc_conv,no_verify=False)
+    txhash,tx,fee=generate_signed_claim(coin,args.cointicker,args.txid,args.wifkey,args.srcaddr,args.destaddr,args.height,args.txindex,args.satoshis,args.fee,args.p2pk,args.no_wtc_conv,no_verify=False)
         
-    print "Raw transaction"
-    print tx.encode("hex")
-    print
-
-    coinamount = satoshis * coin.coinratio / 100000000.0
-    btcamount = satoshis / 100000000.0
-    print "YOU ARE ABOUT TO SEND %.8f %s (equivalent to %.8f BTC) FROM %s" % (coinamount, coin.ticker, btcamount, args.srcaddr)
-
-    for outscript, amount, destaddr, rawaddr in outputs:
-        coinamount = amount * coin.coinratio / 100000000.0
-        btcamount = amount / 100000000.0
-        print "    %.8f %s (equivalent to %.8f BTC) TO %s" % (coinamount, coin.ticker, btcamount, destaddr)
-        
-    coinamount = args.fee * coin.coinratio / 100000000.0
-    btcamount = args.fee / 100000000.0
-    print "!!! %.8f %s (equivalent to %.8f BTC) WILL BE SENT AS FEES! CONTINUE AT YOUR OWN RISK !!!" % (coinamount, coin.ticker, btcamount)
-
-    # avoid bad RAM errors in destination address
-    for outscript, amount, destaddr, rawaddr in outputs:
-        if destaddr.startswith("bc1"):
-            idx = tx.index(rawaddr[:10])
-            part2 = tx[idx+10:idx+20]
-            idx = tx.index(rawaddr[10:20])
-            part1 = tx[idx-10:idx]
-            testaddr = bech32encode("bc", part1 + part2)
-        else:
-            idx = tx.index(rawaddr[-20:-10])
-            part2 = tx[idx+10:idx+20]
-            idx = tx.index(rawaddr[-10:])
-            part1 = tx[idx-10:idx]
-            testaddr = b58encode(rawaddr[:-20] + part1 + part2)
-            
-        if destaddr != testaddr or outscript not in tx:
-            raise Exception("Corrupted destination address! Check your RAM!")
-
     if not args.force:
         get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
 
