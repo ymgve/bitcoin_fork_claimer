@@ -1464,9 +1464,9 @@ if __name__=='__main__':
     parser.add_argument("--no_verify", help="Do not verify transactions after constructing them",action="store_true")
     
     #selectors to do offline behavior
-    offlinegroup = parser.add_mutually_exclusive_group(required=False)    
-    offlinegroup.add_argument("--sign_only_txfile",help="Do not broadcast signed transaction.  Instead, save it to the specified file.", type=argparse.FileType('w'),action="store_true")
-    offlinegroup.add_argument("--send_only_txfile",help="Do not generate signed transaction. Instead, broadcast a signed transaction from an file generated with --sign_only_txfile", type=argparse.FileType('r'),action="store_true")
+    offlinegroup = parser.add_mutually_exclusive_group(required=False)
+    offlinegroup.add_argument("--sign_only_txfile",help="Do not broadcast signed transaction.  Instead, save it to the specified file.",type=argparse.FileType('w'))
+    offlinegroup.add_argument("--send_only_txfile",help="Do not generate signed transaction. Instead, broadcast a signed transaction from an file generated with --sign_only_txfile",type=argparse.FileType('r'))
     args = parser.parse_args()
 
     coin=coin_from_ticker(args.cointicker)
