@@ -1249,37 +1249,18 @@ def coin_from_ticker(cointicker):
     except Exception as e:
         raise Exception("Coin %s not found!" % (cointicker))
 
-if __name__=='__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("cointicker", help="Coin type", choices=sorted(list(allcoins.keys())))
-    parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
-    parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
-    parser.add_argument("srcaddr", help="Source address of the coins")
-    parser.add_argument("destaddr", help="Destination address of the coins")
-    parser.add_argument("--fee", help="Fee measured in Satoshis, default is 1000", type=int, default=1000)
-    parser.add_argument("--txindex", help="Manually specified txindex, skips blockchain.info API query", type=int)
-    parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
-    parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
-    parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
-    parser.add_argument("--force", help="Do not require consent, submit transaction directly", action="store_true")
-    parser.add_argument("--noblock", help="Do not wait for block confirmation, finish after the transaction is in mempool", action="store_true")
-    parser.add_argument("--no_wtc_conv", help="Disable 100:1 up-conversion of WBTC (In practice you should never need this)", action="store_true")
-
-    args = parser.parse_args()
-
-    coin=coin_from_ticker(args.cointicker)
-        
-    if args.height and coin.hardforkheight < args.height:
+def generate_signed_claim(coin,cointicker,txid,wifkey,srcaddr,destaddr,height,txindex,satoshis,fee=1000,p2pk=False,no_wtc_conv=False,no_verify=False):
+    if height and coin.hardforkheight < height:
         print "\n\nTHIS TRANSACTION HAPPENED AFTER THE COIN FORKED FROM THE MAIN CHAIN, exiting"
         print "(fork at height %d)" % coin.hardforkheight
         exit()
 
-    keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(args.wifkey, args.srcaddr)
+    keytype, privkey, pubkey, sourceh160, compressed = identify_keytype(wifkey, srcaddr)
 
-    if keytype == "segwit" and args.cointicker == "BTCP":
+    if keytype == "segwit" and cointicker == "BTCP":
         keytype = "segwit_btcp"
         
-    if args.p2pk:
+    if p2pk:
         keytype = "p2pk"
         srcscript = lengthprefixed(serializepubkey(pubkey, compressed)) + "\xac"
     elif keytype in ("standard", "segwit_btcp"):
@@ -1299,28 +1280,28 @@ if __name__=='__main__':
     else:
         signscript = "\x76\xa9\x14" + sourceh160 + "\x88\xac"
 
-    if args.txindex is not None and args.satoshis is not None:
-        txindex, satoshis = args.txindex, args.satoshis
+    if txindex is not None and satoshis is not None:
+        txindex, satoshis = txindex, satoshis
     else:
-        if args.cointicker == "BTX":
-            args.txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(args.srcaddr)
+        if cointicker == "BTX":
+            txid, txindex, bciscript, satoshis = get_btx_details_from_chainz_cryptoid(srcaddr)
         elif coin.electrum_server:
-            args.txid, txindex, bciscript, satoshis = get_coin_details_from_electrum(coin, args.txid, sourceh160, keytype)
-        elif args.cointicker == "CDY":
+            txid, txindex, bciscript, satoshis = get_coin_details_from_electrum(coin, txid, sourceh160, keytype)
+        elif cointicker == "CDY":
             raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
-        elif args.cointicker == "BCBC":
+        elif cointicker == "BCBC":
             raise Exception("Bitcoin@CBC is not a true fork and therefore does not work with blockchain.info mode. Please use http://be.cleanblockchain.org and specify txindex and satoshis manually.")
         else:
-            txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
+            txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(txid, srcaddr, coin.hardforkheight)
         
         if bciscript is not None and bciscript != srcscript:
             raise Exception("Script type in source output that is not supported!")
 
     # I misunderstood the WBTC dev implementation of 100:1 fork ratio - gotta multiply by 100 here to claim all coins that existed pre-fork
-    if args.cointicker == "WBTC" and not args.no_wtc_conv:
+    if cointicker == "WBTC" and not no_wtc_conv:
         satoshis *= 100
         
-    remaining = satoshis - args.fee
+    remaining = satoshis - fee
     if remaining <= 0:
         print "The specified amount of satoshis specified is smaller than or equal to the fee."
         print "Note that the '--satoshis' parameter needs to be the TOTAL amount available in the source transaction."
@@ -1328,7 +1309,7 @@ if __name__=='__main__':
         raise Exception("No coins remaining to place in outputs")
         
     outputs = []
-    for output in args.destaddr.split(","):
+    for output in destaddr.split(","):
         if ":" not in output:
             destaddr, amount = output, None
         else:
@@ -1372,10 +1353,34 @@ if __name__=='__main__':
         raise Exception("Addition of output amounts does not match input amount (Bug?), aborting")
 
     if keytype in ("p2pk", "standard", "segwit", "segwit_btcp", "segwitbech32"):
-        tx, plaintx = coin.maketx(args.txid, txindex, sourceh160, signscript, satoshis, privkey, pubkey, compressed, outputs, args.fee, keytype)
+        tx, plaintx = coin.maketx(txid, txindex, sourceh160, signscript, satoshis, privkey, pubkey, compressed, outputs, fee, keytype)
         txhash = doublesha(plaintx)
     else:
         raise Exception("Not implemented!")
+
+    return txhash,tx,fee,satoshis,outputs
+
+if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("cointicker", help="Coin type", choices=sorted(list(allcoins.keys())))
+    parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
+    parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
+    parser.add_argument("srcaddr", help="Source address of the coins")
+    parser.add_argument("destaddr", help="Destination address of the coins")
+    parser.add_argument("--fee", help="Fee measured in Satoshis, default is 1000", type=int, default=1000)
+    parser.add_argument("--txindex", help="Manually specified txindex, skips blockchain.info API query", type=int)
+    parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
+    parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
+    parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
+    parser.add_argument("--force", help="Do not require consent, submit transaction directly", action="store_true")
+    parser.add_argument("--noblock", help="Do not wait for block confirmation, finish after the transaction is in mempool", action="store_true")
+    parser.add_argument("--no_wtc_conv", help="Disable 100:1 up-conversion of WBTC (In practice you should never need this)", action="store_true")
+
+    args = parser.parse_args()
+
+    coin=coin_from_ticker(args.cointicker)
+        
+    txhash,tx,fee,satoshis,outputs=generate_signed_claim(coin,args.cointicker,args.txid,args.wifkey,args.srcaddr,args.destaddr,args.height,args.txindex,args.satoshis,args.fee,args.p2pk,args.no_wtc_conv,no_verify=False)
         
     print "Raw transaction"
     print tx.encode("hex")
