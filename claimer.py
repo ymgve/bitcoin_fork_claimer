@@ -1396,31 +1396,8 @@ def verify_amounts(coin,satoshis,outputs,tx,destaddr,fee):
             raise Exception("Corrupted destination address! Check your RAM!")
 
 
-
-
-if __name__=='__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("cointicker", help="Coin type", choices=sorted(list(allcoins.keys())))
-    parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
-    parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
-    parser.add_argument("srcaddr", help="Source address of the coins")
-    parser.add_argument("destaddr", help="Destination address of the coins")
-    parser.add_argument("--fee", help="Fee measured in Satoshis, default is 1000", type=int, default=1000)
-    parser.add_argument("--txindex", help="Manually specified txindex, skips blockchain.info API query", type=int)
-    parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
-    parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
-    parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
-    parser.add_argument("--force", help="Do not require consent, submit transaction directly", action="store_true")
-    parser.add_argument("--noblock", help="Do not wait for block confirmation, finish after the transaction is in mempool", action="store_true")
-    parser.add_argument("--no_wtc_conv", help="Disable 100:1 up-conversion of WBTC (In practice you should never need this)", action="store_true")
-
-    args = parser.parse_args()
-
-    coin=coin_from_ticker(args.cointicker)
-        
-    txhash,tx,fee=generate_signed_claim(coin,args.cointicker,args.txid,args.wifkey,args.srcaddr,args.destaddr,args.height,args.txindex,args.satoshis,args.fee,args.p2pk,args.no_wtc_conv,no_verify=False)
-        
-    if not args.force:
+def broadcast_claim(coin,txhash,tx,fee,force=False):
+    if not force:
         get_consent("I am sending coins on the %s network and I accept the risks" % coin.fullname)
 
     print "generated transaction", txhash[::-1].encode("hex")
@@ -1463,5 +1440,32 @@ if __name__=='__main__':
         
     else:
         client = Client(coin)
-        client.send_tx(txhash, tx, args.fee)
+        client.send_tx(txhash, tx, fee)
 
+
+
+
+
+if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("cointicker", help="Coin type", choices=sorted(list(allcoins.keys())))
+    parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
+    parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
+    parser.add_argument("srcaddr", help="Source address of the coins")
+    parser.add_argument("destaddr", help="Destination address of the coins")
+    parser.add_argument("--fee", help="Fee measured in Satoshis, default is 1000", type=int, default=1000)
+    parser.add_argument("--txindex", help="Manually specified txindex, skips blockchain.info API query", type=int)
+    parser.add_argument("--satoshis", help="Manually specified number of satoshis, skips blockchain.info API query", type=int)
+    parser.add_argument("--p2pk", help="Source is P2PK. Use this if you have REALLY old coins (2009-2010) and normal mode fails", action="store_true")
+    parser.add_argument("--height", help="Manually specified block height of transaction, optional", type=int)
+    parser.add_argument("--force", help="Do not require consent, submit transaction directly", action="store_true")
+    parser.add_argument("--noblock", help="Do not wait for block confirmation, finish after the transaction is in mempool", action="store_true")
+    parser.add_argument("--no_wtc_conv", help="Disable 100:1 up-conversion of WBTC (In practice you should never need this)", action="store_true")
+
+    args = parser.parse_args()
+
+    coin=coin_from_ticker(args.cointicker)
+        
+    txhash,tx,fee=generate_signed_claim(coin,args.cointicker,args.txid,args.wifkey,args.srcaddr,args.destaddr,args.height,args.txindex,args.satoshis,args.fee,args.p2pk,args.no_wtc_conv,no_verify=False)
+        
+    broadcast_claim(coin,txhash,tx,fee,force=args.force)
