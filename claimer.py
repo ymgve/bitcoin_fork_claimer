@@ -1023,8 +1023,7 @@ class BitcoinPrivate(BitcoinFork):
         self.hardforkheight = 511346
         self.magic = 0xcda2eaa8
         self.port = 7933
-        # removed dnsseed.btcprivate.org until more clients have upgraded to version 1.0.11 which supports segwit
-        self.seeds = ("157.52.27.131", "35.192.186.138", "35.229.218.234")
+        self.seeds = ("dnsseed.btcprivate.co",)
         self.signtype = 0x41
         self.signid = self.signtype | (42 << 8)
         self.PUBKEY_ADDRESS = "\x13\x25"
