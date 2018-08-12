@@ -795,6 +795,7 @@ class UnitedBitcoin(BitcoinFork):
         self.versionno = 731800
         self.extrabytes = "\x02ub"
 
+# https://github.com/superbitcoin/SuperBitcoin
 class SuperBitcoin(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
@@ -808,6 +809,7 @@ class SuperBitcoin(BitcoinFork):
         self.signid = self.signtype
         self.maketx = self.maketx_basicsig # does not use new-style segwit signing for standard transactions
         self.extrabytes = lengthprefixed("sbtc")
+        self.versionno = 70017
         
 class BitcoinDiamond(BitcoinFork):
     def __init__(self):
