@@ -10,6 +10,10 @@ gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8L
 b58ab = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 bech32ab = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
+def safeassert(test,reason):
+    if(not test):
+        raise RuntimeError(reason)
+
 def bech32_polymod(values):
     GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
     chk = 1
@@ -27,8 +31,8 @@ def bech32decode(addr):
     hrp, data = addr.lower().rsplit("1", 1)
     data = [bech32ab.index(c) for c in data]
 
-    assert bech32_polymod(bech32_hrp_expand(hrp) + data) == 1, "bech32 checksum failed"
-    assert data[0] == 0, "only support version 0 witness for now"
+    safeassert(bech32_polymod(bech32_hrp_expand(hrp) + data) == 1, "bech32 checksum failed")
+    safeassert(data[0] == 0, "only support version 0 witness for now")
     data = data[1:-6]
     
     n = 0
@@ -72,7 +76,7 @@ def b58decode(s, checksum=True):
     
     if checksum:
         res, cs = res[:-4], res[-4:]
-        assert cs == b58csum(res), "base58 checksum failed"
+        safeassert(cs == b58csum(res), "base58 checksum failed")
         
     return res
 
@@ -225,11 +229,11 @@ def sign(privkey, h):
     
     p = scalar_mul(k, Point(gx, gy), N)
     r = p.x % R
-    assert r != 0
+    safeassert(r != 0,"the x-coordinate of the elliptic curve point cannot be zero in a signature")
     
     ki = modinv(k, R)
     s = (ki * (z + r * privkey)) % R
-    assert s != 0
+    safeassert(s != 0,"The scalar during signature cannot be zero")
     if s > (R / 2):
         s = R - s
     
@@ -286,7 +290,7 @@ def wif2privkey(s):
 def identify_keytype(wifkey, addr):
     if addr.startswith("bc1"):
         addrh160 = bech32decode(addr)
-        assert len(addrh160) == 20
+        safeassert(len(addrh160) == 20,"Unsupported address length detected for bech32 address")
         
         privkeytype, privkey, compressed = wif2privkey(args.wifkey)
         pubkey = scalar_mul(privkey, Point(gx, gy), N)
@@ -296,7 +300,7 @@ def identify_keytype(wifkey, addr):
         raise Exception("Unable to identify key type!")
     else:
         addrh160 = b58decode(addr)[-20:]
-        assert len(addrh160) == 20
+        safeassert(len(addrh160) == 20,"Unsupported address length detected for bech32 address")
 
         privkeytype, privkey, compressed = wif2privkey(args.wifkey)
         pubkey = scalar_mul(privkey, Point(gx, gy), N)
@@ -1210,8 +1214,8 @@ class BitcoinCore(BitcoinFork):
         self.signid = self.signtype
         self.bch_fork = True
         
-# https://github.com/bitcoinfile/bitcoinfile/tree/master/bificore
-class BitcoinFile(BitcoinFork):
+   # https://github.com/bitcoinfile/bitcoinfile/tree/master/bificore
+  class BitcoinFile(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
         self.ticker = "BIFI"
@@ -1228,8 +1232,11 @@ class BitcoinFile(BitcoinFork):
         self.txversion = 20
         self.BCDgarbage = struct.pack("<I", self.txversion)
         self.coinratio = 1000.0
+
         
-assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
+
+safeassert(gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60,"The deterministic signature algorithm is not implemented correctly")
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI"])
@@ -1387,13 +1394,13 @@ for output in args.destaddr.split(","):
         
     if destaddr.startswith("bc1"):
         rawaddr = bech32decode(destaddr)
-        assert len(rawaddr) == 20
+        safeassert(len(rawaddr) == 20,"The segwit address length was not 160 bits")
         print "YOU ARE TRYING TO SEND TO A bech32 ADDRESS! THIS IS NOT NORMAL! Are you sure you know what you're doing?"
         get_consent("I am aware that the destination address is bech32")
         outscript = "\x00\x14" + rawaddr
     else:
         rawaddr = b58decode(destaddr)
-        assert len(rawaddr) in (21, coin.address_size)
+        safeassert(len(rawaddr) in (21, coin.address_size),"The base58 address had an improper length")
         if rawaddr[0] == "\x00" or rawaddr.startswith(coin.PUBKEY_ADDRESS):
             outscript = "\x76\xa9\x14" + rawaddr[-20:] + "\x88\xac"
         elif rawaddr[0] == "\x05" or rawaddr.startswith(coin.SCRIPT_ADDRESS):
@@ -1495,7 +1502,7 @@ elif coin.electrum_server and coin.electrum_pushtx:
     res = readline(sc)
     j = json.loads(res)
     try:
-        assert j["result"] == txhash[::-1].encode("hex")
+        safeassert(j["result"] == txhash[::-1].encode("hex"),"The server provided an inconsistent transaction id")
         print "Success - server accepted transaction and responded with TXID %s" % j["result"]
     except:
         print "ERROR when submitting transaction!"
@@ -1504,4 +1511,3 @@ elif coin.electrum_server and coin.electrum_pushtx:
 else:
     client = Client(coin)
     client.send_tx(txhash, tx, args.fee)
-
