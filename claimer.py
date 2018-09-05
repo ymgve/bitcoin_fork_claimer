@@ -919,10 +919,13 @@ class BitcoinPay(BitcoinFork):
         self.ticker = "BTP"
         self.fullname = "Bitcoin Pay"
         self.hardforkheight = 499345
+        self.magic = 0xd9c1d0fe
+        self.port = 8380
+        self.seeds = ("seed.btceasypay.com",)
         self.signtype = 0x41
         self.signid = self.signtype | (80 << 8)
         self.PUBKEY_ADDRESS = chr(0x38)
-        self.SCRIPT_ADDRESS = chr(5) # NOT CERTAIN
+        self.SCRIPT_ADDRESS = chr(0x3a)
         self.coinratio = 10.0
 
 # https://github.com/btcking/btcking
@@ -1245,6 +1248,7 @@ parser.add_argument("--height", help="Manually specified block height of transac
 parser.add_argument("--force", help="Do not require consent, submit transaction directly", action="store_true")
 parser.add_argument("--noblock", help="Do not wait for block confirmation, finish after the transaction is in mempool", action="store_true")
 parser.add_argument("--no_wtc_conv", help="Disable 100:1 up-conversion of WBTC (In practice you should never need this)", action="store_true")
+parser.add_argument("--use_btp_api", help="Use the old BTP API to submit transactions instead of connecting to the network", action="store_true")
 
 args = parser.parse_args()
 
@@ -1466,7 +1470,7 @@ if not args.force:
 print "generated transaction", txhash[::-1].encode("hex")
 print "\n\nConnecting to servers and pushing transaction\nPlease wait for a minute before stopping the script to see if it entered the server mempool.\n\n"
 
-if coin.ticker == "BTP":
+if coin.ticker == "BTP" and args.use_btp_api:
     data = '{"rawtx": "%s"}\r\n' % tx.encode("hex")
     opener = urllib2.build_opener()
     req = urllib2.Request("http://exp.btceasypay.com/insight-api/tx/send", data=data, headers={"Content-Type": "application/json"})
