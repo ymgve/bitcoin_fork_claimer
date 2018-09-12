@@ -640,7 +640,17 @@ class BitcoinFork(object):
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
         
-        to_sign = version + self.BCDgarbage + doublesha(prevout) + doublesha(sequence) + prevout + inscript + satoshis + sequence + doublesha(txouts) + locktime + sigtype + self.extrabytes
+        prevouthash = doublesha(prevout)
+        sequencehash = doublesha(sequence)
+        txoutshash = doublesha(txouts)
+        
+        # MicroBitcoin bug - fork ID includes SIGHASH_ANYONECANPAY
+        # That means prevout and sequence hashes are empty in the signature
+        if self.ticker == "MBC":
+            prevouthash = "\x00" * 32
+            sequencehash = "\x00" * 32
+            
+        to_sign = version + self.BCDgarbage + prevouthash + sequencehash + prevout + inscript + satoshis + sequence + txoutshash + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -1232,10 +1242,27 @@ class BitcoinFile(BitcoinFork):
         self.BCDgarbage = struct.pack("<I", self.txversion)
         self.coinratio = 1000.0
         
+# https://github.com/MicroBitcoinOrg/MicroBitcoin
+class MicroBitcoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "MBC"
+        self.fullname = "Micro Bitcoin"
+        self.hardforkheight = 525001
+        self.magic = 0x7643424d
+        self.port = 6403
+        self.seeds = ("52.76.239.17", "52.220.61.181", "54.169.196.33", "13.228.235.197", "35.176.181.187", "35.177.156.222", "52.53.211.109", "13.57.248.201")
+        self.maketx = self.maketx_basicsig
+        self.signtype = 0x01 | 0xb8
+        self.signid = self.signtype
+        self.coinratio = 10000.0
+        self.PUBKEY_ADDRESS = chr(26)
+        self.SCRIPT_ADDRESS = chr(51)
+
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI", "MBC"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1312,6 +1339,8 @@ elif args.cointicker == "GOD":
     coin = BitcoinGod()
 elif args.cointicker == "LBTC":
     coin = LightningBitcoin()
+elif args.cointicker == "MBC":
+    coin = MicroBitcoin()
 elif args.cointicker == "NBTC":
     coin = NewBitcoin()
 elif args.cointicker == "SBTC":

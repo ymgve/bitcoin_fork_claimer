@@ -37,14 +37,15 @@ The following coins are recognized, although may not be fully tested:
 *  CDY - [Bitcoin Candy](https://cdy.one/) - Forked from Bitcoin Cash, not Bitcoin
 *  GOD - [Bitcoin God](https://www.bitcoingod.org/)
 *  LBTC - [Lightning Bitcoin](http://lbtc.io/)
+*  MBC - [MicroBitcoin](https://microbitcoin.org/)
 *  NBTC - [NewBitcoin](http://www.newbitcoin.org/index_en.html)
 *  SBTC - [Super Bitcoin](http://superbtc.org/)
 *  UBTC - [United Bitcoin](https://www.ub.com/)
 *  WBTC - [World Bitcoin](http://www.wbtcteam.org/)
 
-At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BTCP, BCL, BIFI
+At the moment it supports standard P2PKH and Segwit P2SH-P2WPKH addresses. Segwit mode has been verified to work with these coins: BTG, BCX, B2X, UBTC, BTF, BTW, SBTC, BCD, BPA, BTN, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BTCP, BCL, BIFI, MBC
 
-It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BCL networks so far.
+It also has experimental support for bech32 P2WPKH, but this has only been tested on the BTG, BTN, BCD, BTH, BTV, BTT, BTP, BTSQ, WBTC, BCA, BICC, BCI, BCL, MBC networks so far.
 
 It should support old-style Pay-2-Public-Key that were in use in 2009-2010 (use command line switch --p2pk) but this is UNTESTED at the moment.
 
@@ -107,4 +108,4 @@ fbtcclaimer.py also requires aes.py to be in the same folder as the script. Than
 
 ---
 
-Any donations can be sent to BTC address `1HDW5sy8trGE8mEKUtNacLPGCx1WRtebnp`
+Any donations can be sent to BTC address `13qtaKvBQYN9RQuegqF8Ci7U7JgTtT8SNz`
