@@ -614,6 +614,7 @@ class BitcoinFork(object):
         self.maketx = self.maketx_segwitsig
         self.extrabytes = ""
         self.BCDgarbage = ""
+        self.BCLsalt = ""
         self.txversion = 1
         self.signtype = 0x01
         self.signid = self.signtype
