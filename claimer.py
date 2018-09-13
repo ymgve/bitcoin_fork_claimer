@@ -650,7 +650,7 @@ class BitcoinFork(object):
             prevouthash = "\x00" * 32
             sequencehash = "\x00" * 32
             
-        to_sign = version + self.BCDgarbage + prevouthash + sequencehash + prevout + inscript + satoshis + sequence + txoutshash + locktime + sigtype + self.extrabytes
+        to_sign = version + self.BCDgarbage + self.BCLsalt + prevouthash + sequencehash + prevout + inscript + satoshis + sequence + txoutshash + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -699,7 +699,7 @@ class BitcoinFork(object):
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
         
-        to_sign = version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(len(outputs)) + txouts + locktime + sigtype + self.extrabytes
+        to_sign = version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(len(outputs)) + txouts + locktime + sigtype + self.extrabytes + self.BCLsalt
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -1194,8 +1194,6 @@ class NewBitcoin(BitcoinFork):
         self.coinratio = 2.0
 
 # https://github.com/bitcoinclean/bitcoinclean
-# Their code uses a "salt" as fork protection, but seems bugged at the moment, and haven't seen any examples of it being used in their blockchain so far
-# "Luckily" they accept plain non-forkID transactions (Yes, this also means the coin basically doesn't have replay protection at the moment)
 class BitcoinClean(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
@@ -1206,8 +1204,9 @@ class BitcoinClean(BitcoinFork):
         self.port = 8338
         self.seeds = ("seed.bitcoinclean.org",)
         self.maketx = self.maketx_basicsig
-        self.signtype = 0x01
+        self.signtype = 0x41
         self.signid = self.signtype
+        self.BCLsalt = "c003700e0c31442382638363c1c7c19fc59f6f9fffcc7e4ebe67fc37781de007".decode("hex")
         
 # https://github.com/bitcoin-cored/bitcoin-cored
 class BitcoinCore(BitcoinFork):
