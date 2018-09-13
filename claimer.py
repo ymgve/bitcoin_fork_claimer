@@ -1108,8 +1108,8 @@ class BitcoinInterest(BitcoinFork):
         self.fullname = "Bitcoin Interest"
         self.hardforkheight = 505083
         self.magic = 0x26fee4ed
-        self.port = 8331
-        self.seeds = ("seeder1.bci-server.com", "seeder2.bci-server.com", "seeder3.bci-server.com", "74.208.166.57", "216.250.117.221")
+        self.port = 8334
+        self.seeds = ("seeder1.bci-server.com", "seeder2.bci-server.com", "seeder3.bci-server.com", "37.16.104.241")
         self.signtype = 0x41
         self.signid = self.signtype | (79 << 8)
         self.PUBKEY_ADDRESS = chr(102)
@@ -1391,6 +1391,8 @@ else:
         raise Exception("Block explorer for BCH forks not supported yet. Please specify txindex and satoshis manually.")
     elif args.cointicker == "BCBC":
         raise Exception("Bitcoin@CBC is not a true fork and therefore does not work with blockchain.info mode. Please use http://be.cleanblockchain.org and specify txindex and satoshis manually.")
+    elif args.cointicker == "BCI":
+        raise Exception("Bitcoin Interest V2 is not a true fork and therefore does not work with blockchain.info mode. Please use https://explorer.bitcoininterest.io/ and specify txindex and satoshis manually.")
     else:
         txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
