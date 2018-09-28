@@ -1253,7 +1253,7 @@ class MicroBitcoin(BitcoinFork):
         self.port = 6403
         self.seeds = ("52.76.239.17", "52.220.61.181", "54.169.196.33", "13.228.235.197", "35.176.181.187", "35.177.156.222", "52.53.211.109", "13.57.248.201")
         self.maketx = self.maketx_basicsig
-        self.signtype = 0x01 | 0xb8
+        self.signtype = 0x01 | 0x60
         self.signid = self.signtype
         self.coinratio = 10000.0
         self.PUBKEY_ADDRESS = chr(26)
