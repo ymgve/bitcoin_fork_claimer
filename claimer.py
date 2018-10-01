@@ -645,12 +645,6 @@ class BitcoinFork(object):
         sequencehash = doublesha(sequence)
         txoutshash = doublesha(txouts)
         
-        # MicroBitcoin bug - fork ID includes SIGHASH_ANYONECANPAY
-        # That means prevout and sequence hashes are empty in the signature
-        if self.ticker == "MBC":
-            prevouthash = "\x00" * 32
-            sequencehash = "\x00" * 32
-            
         to_sign = version + self.BCDgarbage + self.BCLsalt + prevouthash + sequencehash + prevout + inscript + satoshis + sequence + txoutshash + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
@@ -1253,7 +1247,7 @@ class MicroBitcoin(BitcoinFork):
         self.port = 6403
         self.seeds = ("52.76.239.17", "52.220.61.181", "54.169.196.33", "13.228.235.197", "35.176.181.187", "35.177.156.222", "52.53.211.109", "13.57.248.201")
         self.maketx = self.maketx_basicsig
-        self.signtype = 0x01 | 0xb8
+        self.signtype = 0x01 | 0x60
         self.signid = self.signtype
         self.coinratio = 10000.0
         self.PUBKEY_ADDRESS = chr(26)
