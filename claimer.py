@@ -1061,22 +1061,23 @@ class BitcoinAtom(BitcoinFork):
         self.PUBKEY_ADDRESS = chr(23)
         self.SCRIPT_ADDRESS = chr(10)
 
-# no source code yet - shame!
+# https://github.com/lbtcio/lbtc-core
 class LightningBitcoin(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
         self.ticker = "LBTC"
         self.fullname = "Lightning Bitcoin"
         self.hardforkheight = 499999
-        self.magic = 0xd7b3bef9
+        self.magic = 0xd5b3bef9
         self.port = 9333
-        self.seeds = ("seed7.lbtc.io", "seed8.lbtc.io", "seed9.lbtc.io", "seed10.lbtc.io")
+        self.seeds = ("seed1.lbtc.io", "seed2.lbtc.io", "seed3.lbtc.io", "seed4.lbtc.io", "seed5.lbtc.io", "seed6.lbtc.io", "seed7.lbtc.io", "seed8.lbtc.io", "seed9.lbtc.io", "seed10.lbtc.io")
         self.signtype = 0x01
         self.signid = self.signtype
         self.PUBKEY_ADDRESS = chr(0)
         self.SCRIPT_ADDRESS = chr(5)
-        self.txversion = 0xff01
+        self.txversion = 0xff02             # https://github.com/lbtcio/lbtc-core/blob/bdf916128dd6f60340e5f3404cab2f7836c0b2f4/src/primitives/transaction.h#L307
         self.maketx = self.maketx_basicsig
+        self.extrabytes = lengthprefixed("LBTC")
 
 # https://github.com/bitunity/BitClassicCoin-BICC
 class BitcoinClassicCoin(BitcoinFork):
