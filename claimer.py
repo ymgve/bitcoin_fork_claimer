@@ -1442,10 +1442,6 @@ def broadcast_claim(coin,txhash,tx,fee,force=False):
         client = Client(coin)
         client.send_tx(txhash, tx, fee)
 
-
-
-
-
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("cointicker", help="Coin type", choices=sorted(list(allcoins.keys())))
