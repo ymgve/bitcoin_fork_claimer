@@ -108,4 +108,14 @@ fbtcclaimer.py also requires aes.py to be in the same folder as the script. Than
 
 ---
 
+---
+
+There is another python script for just broadcast transactions.
+
+Usage:
+
+    broadcaster.py <cointype> <rawtx>
+
+---
+
 Any donations can be sent to BTC address `13qtaKvBQYN9RQuegqF8Ci7U7JgTtT8SNz`
