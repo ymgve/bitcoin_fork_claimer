@@ -694,7 +694,13 @@ class BitcoinFork(object):
         locktime = struct.pack("<I", 0)
         sigtype = struct.pack("<I", self.signid)
         
-        to_sign = version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(len(outputs)) + txouts + locktime + sigtype + self.extrabytes + self.BCLsalt
+        if self.ticker == "CLAM":
+            CLAMgarbage = lengthprefixed("")
+            self.BCDgarbage = struct.pack("<I", int(time.time()))
+        else:
+            CLAMgarbage = ""
+        
+        to_sign = version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(len(outputs)) + txouts + locktime + CLAMgarbage + sigtype + self.extrabytes + self.BCLsalt
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -707,7 +713,7 @@ class BitcoinFork(object):
         if keytype == "segwit_btcp":
             sigblock += lengthprefixed("\x00\x14" + sourceh160)
         
-        plaintx = version + self.BCDgarbage + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(len(outputs)) + txouts + locktime
+        plaintx = version + self.BCDgarbage + make_varint(1) + prevout + lengthprefixed(sigblock) + sequence + make_varint(len(outputs)) + txouts + locktime + CLAMgarbage
         
         if verifytotal != sourcesatoshis:
             raise Exception("Addition of output amounts does not match input amount (Bug?), aborting")
@@ -1265,10 +1271,28 @@ class MicroBitcoin(BitcoinFork):
         self.PUBKEY_ADDRESS = chr(26)
         self.SCRIPT_ADDRESS = chr(51)
 
+# https://github.com/MicroBitcoinOrg/MicroBitcoin
+class Clamcoin(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "CLAM"
+        self.fullname = "Clamcoin"
+        self.hardforkheight = 300377
+        self.magic = 0x15352203
+        self.port = 31174
+        self.seeds = ("clam.just-dice.com",)
+        self.maketx = self.maketx_basicsig
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.coinratio = 1.0
+        self.PUBKEY_ADDRESS = chr(26)
+        self.SCRIPT_ADDRESS = chr(51)
+        self.txversion = 2
+        
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTC", "BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI", "MBC"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTC", "BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI", "MBC", "CLAM"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1343,6 +1367,8 @@ elif args.cointicker == "BTX":
     coin = BitCore()
 elif args.cointicker == "CDY":
     coin = BitcoinCandy()
+elif args.cointicker == "CLAM":
+    coin = Clamcoin()
 elif args.cointicker == "GOD":
     coin = BitcoinGod()
 elif args.cointicker == "LBTC":
@@ -1401,6 +1427,8 @@ else:
         raise Exception("Bitcoin@CBC is not a true fork and therefore does not work with blockchain.info mode. Please use http://be.cleanblockchain.org and specify txindex and satoshis manually.")
     elif args.cointicker == "BCI":
         raise Exception("Bitcoin Interest V2 is not a true fork and therefore does not work with blockchain.info mode. Please use https://explorer.bitcoininterest.io/ and specify txindex and satoshis manually.")
+    elif args.cointicker == "CLAM":
+        raise Exception("Clamcoin is not a true fork and therefore does not work with blockchain.info mode. Please use http://www.khashier.com/ and specify txindex and satoshis manually.")
     else:
         txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     
@@ -1410,6 +1438,10 @@ else:
 # I misunderstood the WBTC dev implementation of 100:1 fork ratio - gotta multiply by 100 here to claim all coins that existed pre-fork
 if args.cointicker == "WBTC" and not args.no_wtc_conv:
     satoshis *= 100
+    
+if args.cointicker == "CLAM" and args.fee < 10000:
+    print "Raising minimum fee for CLAM to 10000 satoshis"
+    args.fee = 10000
     
 remaining = satoshis - args.fee
 if remaining <= 0:

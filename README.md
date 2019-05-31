@@ -21,6 +21,7 @@ The following coins are recognized, although may not be fully tested:
 *  BICC - [BitClassic Coin](http://bicc.io/)
 *  BIFI - [Bitcoin File](https://www.bitcoinfile.org)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
+*  BTC - [Bitcoin](https://bitcoin.org/en/)
 *  BTCC - [Bitcoin Core](https://bitcoincore.cm/)
 *  BTCH - [Bitcoin Hush](http://btchush.org/)
 *  BTCP - [Bitcoin Private](https://btcprivate.org/)
@@ -35,6 +36,7 @@ The following coins are recognized, although may not be fully tested:
 *  BTW - [Bitcoin World](http://www.btw.one/)
 *  BTX - [Bitcore](https://bitcore.cc/)
 *  CDY - [Bitcoin Candy](https://cdy.one/) - Forked from Bitcoin Cash, not Bitcoin
+*  CLAM - [Clamcoin](https://www.clamcoin.org/)
 *  GOD - [Bitcoin God](https://www.bitcoingod.org/)
 *  LBTC - [Lightning Bitcoin](http://lbtc.io/)
 *  MBC - [MicroBitcoin](https://microbitcoin.org/)
