@@ -1304,10 +1304,25 @@ class TitleNetwork(BitcoinFork):
         self.bch_fork = True
         self.versionno = 80050
         
+# https://github.com/BITC2/bitcoin2
+class Bitcoin2(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BTC2"
+        self.fullname = "Bitcoin 2"
+        self.hardforkheight = 507850
+        self.magic = 0xf6f0c4e8
+        self.port = 8333
+        self.seeds = ("seed.bitc2.org", "seeder.bitc2.org")
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.maketx = self.maketx_basicsig
+        self.versionno = 70912
+        
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTC", "BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI", "MBC", "CLAM", "TNET"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTC", "BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI", "MBC", "CLAM", "TNET", "BTC2"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1354,6 +1369,8 @@ elif args.cointicker == "BPA":
     coin = BitcoinPizza()
 elif args.cointicker == "BTC":
     coin = Bitcoin()
+elif args.cointicker == "BTC2":
+    coin = Bitcoin2()
 elif args.cointicker == "BTCC":
     coin = BitcoinCore()
 elif args.cointicker == "BTCH":
@@ -1446,6 +1463,8 @@ else:
         raise Exception("Bitcoin Interest V2 is not a true fork and therefore does not work with blockchain.info mode. Please use https://explorer.bitcoininterest.io/ and specify txindex and satoshis manually.")
     elif args.cointicker == "CLAM":
         raise Exception("Clamcoin is not a true fork and therefore does not work with blockchain.info mode. Please use http://www.khashier.com/ and specify txindex and satoshis manually.")
+    elif args.cointicker == "BTC2":
+        raise Exception("Bitcoin 2 is not a true fork and therefore does not work with blockchain.info mode.")
     else:
         txindex, bciscript, satoshis = get_tx_details_from_blockchaininfo(args.txid, args.srcaddr, coin.hardforkheight)
     

@@ -22,6 +22,7 @@ The following coins are recognized, although may not be fully tested:
 *  BIFI - [Bitcoin File](https://www.bitcoinfile.org)
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
 *  BTC - [Bitcoin](https://bitcoin.org/en/)
+*  BTC2 - [Bitcoin 2](https://www.bitc2.org/)
 *  BTCC - [Bitcoin Core](https://bitcoincore.cm/)
 *  BTCH - [Bitcoin Hush](http://btchush.org/)
 *  BTCP - [Bitcoin Private](https://btcprivate.org/)
