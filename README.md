@@ -42,6 +42,7 @@ The following coins are recognized, although may not be fully tested:
 *  MBC - [MicroBitcoin](https://microbitcoin.org/)
 *  NBTC - [NewBitcoin](http://www.newbitcoin.org/index_en.html)
 *  SBTC - [Super Bitcoin](http://superbtc.org/)
+*  TNET - [Title Network](https://title.network/)
 *  UBTC - [United Bitcoin](https://www.ub.com/)
 *  WBTC - [World Bitcoin](http://www.wbtcteam.org/)
 

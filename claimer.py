@@ -1289,10 +1289,25 @@ class Clamcoin(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(51)
         self.txversion = 2
         
+# https://github.com/title-network/title-network
+class TitleNetwork(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "TNET"
+        self.fullname = "Title Network"
+        self.hardforkheight = 478559
+        self.magic = 0xf0dcb212
+        self.port = 10333
+        self.seeds = ("seeder.clashic.cash", "seeder.bitcoincore.zone", "seeder-mainnet.clashic.org", "tnetseed.bitcoin-rebooted.xyz")
+        self.signtype = 0x01 | 0x20
+        self.signid = self.signtype
+        self.bch_fork = True
+        self.versionno = 80050
+        
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTC", "BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI", "MBC", "CLAM"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTC", "BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI", "MBC", "CLAM", "TNET"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1379,6 +1394,8 @@ elif args.cointicker == "NBTC":
     coin = NewBitcoin()
 elif args.cointicker == "SBTC":
     coin = SuperBitcoin()
+elif args.cointicker == "TNET":
+    coin = TitleNetwork()
 elif args.cointicker == "UBTC":
     coin = UnitedBitcoin()
 elif args.cointicker == "WBTC":
