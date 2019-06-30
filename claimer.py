@@ -472,7 +472,7 @@ class Client(object):
                 nonce = os.urandom(8)
                 user_agent = "Scraper"
                 msg = struct.pack("<IQQ", self.coin.versionno, services, int(time.time())) + (
-                    localaddr + localaddr + nonce + lengthprefixed(user_agent) + struct.pack("<IB", 0, 0))
+                    localaddr + localaddr + nonce + lengthprefixed(user_agent) + struct.pack("<IB", 0, 0)) + self.coin.BCLDgarbage
                 client.send("version", msg)
 
                 while True:
@@ -615,6 +615,7 @@ class BitcoinFork(object):
         self.extrabytes = ""
         self.BCDgarbage = ""
         self.BCLsalt = ""
+        self.BCLDgarbage = ""
         self.txversion = 1
         self.signtype = 0x01
         self.signid = self.signtype
@@ -645,7 +646,7 @@ class BitcoinFork(object):
         sequencehash = doublesha(sequence)
         txoutshash = doublesha(txouts)
         
-        to_sign = version + self.BCDgarbage + self.BCLsalt + prevouthash + sequencehash + prevout + inscript + satoshis + sequence + txoutshash + locktime + sigtype + self.extrabytes
+        to_sign = self.BCLDgarbage + version + self.BCDgarbage + self.BCLsalt + prevouthash + sequencehash + prevout + inscript + satoshis + sequence + txoutshash + locktime + sigtype + self.extrabytes
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -700,7 +701,7 @@ class BitcoinFork(object):
         else:
             CLAMgarbage = ""
         
-        to_sign = version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(len(outputs)) + txouts + locktime + CLAMgarbage + sigtype + self.extrabytes + self.BCLsalt
+        to_sign = self.BCLDgarbage + version + self.BCDgarbage + make_varint(1) + prevout + inscript + sequence + make_varint(len(outputs)) + txouts + locktime + CLAMgarbage + sigtype + self.extrabytes + self.BCLsalt
         
         signature = signdata(sourceprivkey, to_sign) + make_varint(self.signtype)
         serpubkey = serializepubkey(pubkey, compressed)
@@ -1319,10 +1320,27 @@ class Bitcoin2(BitcoinFork):
         self.maketx = self.maketx_basicsig
         self.versionno = 70912
         
+# https://github.com/bitcoincloudcore/BitcoinCloud
+class BitcoinCloud(BitcoinFork):
+    def __init__(self):
+        BitcoinFork.__init__(self)
+        self.ticker = "BCLD"
+        self.fullname = "Bitcoin Cloud"
+        self.hardforkheight = 510048
+        self.magic = 0xd9b4bef9
+        self.port = 6703
+        self.seeds = ("58.6.200.46", "124.150.91.109", "95.216.112.105", "193.116.227.81", "210.185.74.209")
+        self.signtype = 0x01
+        self.signid = self.signtype
+        self.maketx = self.maketx_basicsig
+        self.PUBKEY_ADDRESS = chr(137)
+        self.SCRIPT_ADDRESS = chr(140)
+        self.BCLDgarbage = "2623d6ef2f5335bc3d182fd697066060adc4f2daeb2b0bc4bf5891ce8a6e7299".decode("hex")[::-1]
+        
 assert gen_k_rfc6979(0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721, "sample") == 0xa6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60
 
 parser = argparse.ArgumentParser()
-parser.add_argument("cointicker", help="Coin type", choices=["BTC", "BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI", "MBC", "CLAM", "TNET", "BTC2"])
+parser.add_argument("cointicker", help="Coin type", choices=["BTC", "BTF", "BTW", "BTG", "BCX", "B2X", "UBTC", "SBTC", "BCD", "BPA", "BTN", "BTH", "BTV", "BTT", "BTX", "BTP", "BCK", "CDY", "BTSQ", "WBTC", "BCH", "BTCP", "BCA", "LBTC", "BICC", "BCI", "BCP", "BCBC", "BTCH", "GOD", "BBC", "NBTC", "BCL", "BTCC", "BIFI", "MBC", "CLAM", "TNET", "BTC2", "BCLD"])
 parser.add_argument("txid", help="Transaction ID with the source of the coins, dummy value for BTX and BTCH")
 parser.add_argument("wifkey", help="Private key of the coins to be claimed in WIF (wallet import) format")
 parser.add_argument("srcaddr", help="Source address of the coins")
@@ -1357,6 +1375,8 @@ elif args.cointicker == "BCK":
     coin = BitcoinKing()
 elif args.cointicker == "BCL":
     coin = BitcoinClean()
+elif args.cointicker == "BCLD":
+    coin = BitcoinCloud()
 elif args.cointicker == "BCP":
     coin = BitcoinCashPlus()
 elif args.cointicker == "BCX":

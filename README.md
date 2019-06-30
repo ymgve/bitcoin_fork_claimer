@@ -16,6 +16,7 @@ The following coins are recognized, although may not be fully tested:
 *  BCI - [Bitcoin Interest](http://bitcoininterest.io/)
 *  BCK - [Bitcoin King](https://btcking.org/) - NOT A TRUE FORK, NOT CLAIMABLE AT THE MOMENT
 *  BCL - [BitcoinClean](https://bitcoinclean.org/)
+*  BCLD - [Bitcoin Cloud](https://bitcoincloud.cash/) - the original ticker symbol is BCL but this is also used by BitcoinClean
 *  BCP - [Bitcoin Cash Plus](http://www.bitcoincashplus.org/)
 *  BCX - [Bitcoin X](https://bcx.org/)
 *  BICC - [BitClassic Coin](http://bicc.io/)

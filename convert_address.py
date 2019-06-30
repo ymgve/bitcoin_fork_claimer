@@ -75,6 +75,7 @@ cointypes = {
         "GOD":  (chr(97), chr(23)),
         "MBC":  (chr(26), chr(51)),
         "CLAM": (chr(137), chr(13)),
+        "BCLD": (chr(137), chr(140)),
     }
 
 if len(sys.argv) != 3:
