@@ -1329,7 +1329,7 @@ class BitcoinCloud(BitcoinFork):
         self.hardforkheight = 510048
         self.magic = 0xd9b4bef9
         self.port = 6703
-        self.seeds = ("58.6.200.46", "124.150.91.109", "95.216.112.105", "193.116.227.81", "210.185.74.209")
+        self.seeds = ("58.6.200.46", "124.150.91.109", "95.216.112.105", "193.116.227.81", "210.185.74.209", "124.170.163.170")
         self.signtype = 0x01
         self.signid = self.signtype
         self.maketx = self.maketx_basicsig
