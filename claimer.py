@@ -1222,20 +1222,6 @@ class BitcoinClean(BitcoinFork):
         self.signid = self.signtype
         self.BCLsalt = "c003700e0c31442382638363c1c7c19fc59f6f9fffcc7e4ebe67fc37781de007".decode("hex")
         
-# https://github.com/bitcoin-cored/bitcoin-cored
-class BitcoinCore(BitcoinFork):
-    def __init__(self):
-        BitcoinFork.__init__(self)
-        self.ticker = "BTCC"
-        self.fullname = "Bitcoin Core"
-        self.hardforkheight = 576698
-        self.magic = 0xe8f3e1e3
-        self.port = 10333
-        self.seeds = ("seeder.clashic.cash", "seeder.bitcoincore.zone", "seeder-mainnet.clashic.org")
-        self.signtype = 0x01 | 0x20
-        self.signid = self.signtype
-        self.bch_fork = True
-        
 # https://github.com/bitcoinfile/bitcoinfile/tree/master/bificore
 class BitcoinFile(BitcoinFork):
     def __init__(self):
@@ -1290,16 +1276,16 @@ class Clamcoin(BitcoinFork):
         self.SCRIPT_ADDRESS = chr(51)
         self.txversion = 2
         
-# https://github.com/title-network/title-network
-class TitleNetwork(BitcoinFork):
+# https://github.com/Bitcoin-Clashic/wallet-official
+class BitcoinClashic(BitcoinFork):
     def __init__(self):
         BitcoinFork.__init__(self)
         self.ticker = "TNET"
-        self.fullname = "Title Network"
+        self.fullname = "Bitcoin Clashic"
         self.hardforkheight = 478559
         self.magic = 0xf0dcb212
         self.port = 10333
-        self.seeds = ("seeder.clashic.cash", "seeder.bitcoincore.zone", "seeder-mainnet.clashic.org", "tnetseed.bitcoin-rebooted.xyz")
+        self.seeds = ("seeder.clashic.cash", "seeder.bitcoincore.zone", "seeder-mainnet.clashic.org", "seeder.clashic.services")
         self.signtype = 0x01 | 0x20
         self.signid = self.signtype
         self.bch_fork = True
@@ -1391,8 +1377,6 @@ elif args.cointicker == "BTC":
     coin = Bitcoin()
 elif args.cointicker == "BTC2":
     coin = Bitcoin2()
-elif args.cointicker == "BTCC":
-    coin = BitcoinCore()
 elif args.cointicker == "BTCH":
     coin = BitcoinHush()
 elif args.cointicker == "BTCP":
@@ -1432,7 +1416,7 @@ elif args.cointicker == "NBTC":
 elif args.cointicker == "SBTC":
     coin = SuperBitcoin()
 elif args.cointicker == "TNET":
-    coin = TitleNetwork()
+    coin = BitcoinClashic()
 elif args.cointicker == "UBTC":
     coin = UnitedBitcoin()
 elif args.cointicker == "WBTC":
