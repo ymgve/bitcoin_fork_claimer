@@ -24,7 +24,6 @@ The following coins are recognized, although may not be fully tested:
 *  BPA - [Bitcoin Pizza](http://p.top/en/index.html)
 *  BTC - [Bitcoin](https://bitcoin.org/en/)
 *  BTC2 - [Bitcoin 2](https://www.bitc2.org/)
-*  BTCC - [Bitcoin Core](https://bitcoincore.cm/)
 *  BTCH - [Bitcoin Hush](http://btchush.org/)
 *  BTCP - [Bitcoin Private](https://btcprivate.org/)
 *  BTF - [Bitcoin Faith](http://bitcoinfaith.org/)
@@ -44,7 +43,7 @@ The following coins are recognized, although may not be fully tested:
 *  MBC - [MicroBitcoin](https://microbitcoin.org/)
 *  NBTC - [NewBitcoin](http://www.newbitcoin.org/index_en.html)
 *  SBTC - [Super Bitcoin](http://superbtc.org/)
-*  TNET - [Title Network](https://title.network/)
+*  TNET - [Bitcoin Clashic](https://bitcoin.clashic.cash/) - FKA Bitcoin Clashic BCL/BCHC, Bitcoin Core BTCC, Title Network TNET
 *  UBTC - [United Bitcoin](https://www.ub.com/)
 *  WBTC - [World Bitcoin](http://www.wbtcteam.org/)
 
